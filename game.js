@@ -45,6 +45,9 @@
       } else if (this.ctx.state === 'suspended') {
         this.ctx.resume();
       }
+      if (window.MidiSoundtrack && this.ctx) {
+        window.MidiSoundtrack.initAudio(this.ctx);
+      }
     }
 
     playShoot(type) {
@@ -673,8 +676,20 @@
         sfx.playHorn(player.vehicle.isPolice);
       }
     } else if (code === 'KeyR') {
-      sfx.radioStation = (sfx.radioStation + 1) % sfx.stations.length;
-      showRadioBanner(sfx.stations[sfx.radioStation]);
+      if (window.MidiSoundtrack) {
+        const st = window.MidiSoundtrack.cycleStation();
+        showRadioBanner(`${st.name} // ${st.subtitle}`);
+        updateHUD();
+      } else {
+        sfx.radioStation = (sfx.radioStation + 1) % sfx.stations.length;
+        showRadioBanner(sfx.stations[sfx.radioStation]);
+      }
+    } else if (code === 'KeyM') {
+      if (window.MidiSoundtrack) {
+        const muted = window.MidiSoundtrack.toggleMute();
+        showRadioBanner(muted ? '🔇 MIDI SOUNDTRACK MUTED' : '🔊 MIDI SOUNDTRACK ACTIVE');
+        updateHUD();
+      }
     } else if (code === 'KeyT') {
       timeMode = (timeMode + 1) % TIME_MODES.length;
       document.getElementById('time-display').textContent = TIME_MODES[timeMode].label.split(' ')[0];
@@ -960,7 +975,12 @@
       bestV.driver = 'player';
       player.vehicle = bestV;
       sfx.playHorn(bestV.isPolice);
-      showRadioBanner(sfx.stations[sfx.radioStation]);
+      if (window.MidiSoundtrack) {
+        const st = window.MidiSoundtrack.tracks[window.MidiSoundtrack.currentStationIdx];
+        showRadioBanner(st ? `${st.name} // ${st.subtitle}` : window.MidiSoundtrack.getCurrentTrackLabel());
+      } else {
+        showRadioBanner(sfx.stations[sfx.radioStation]);
+      }
       updateHUD();
     }
   }
@@ -1281,10 +1301,15 @@
       }
     }
 
+    // Update Multi-Track MIDI Soundtrack Engine (Radio Stations in Vehicles, Action Chase Music on Wanted/Mission, Street Groove on Foot)
+    if (window.MidiSoundtrack) {
+      window.MidiSoundtrack.update(dt, !!player.vehicle, player.wanted, !!activeMission);
+    }
+
     // Player Movement (On Foot vs Driving)
     if (player.vehicle) {
       const v = player.vehicle;
-      sfx.updateRadio(true);
+      if (!window.MidiSoundtrack) sfx.updateRadio(true);
 
       const up = keys['KeyW'] || keys['ArrowUp'] || keys['KeyZ'] || pressedKeys['w'] || pressedKeys['z'] || pressedKeys['arrowup'];
       const down = keys['KeyS'] || keys['ArrowDown'] || pressedKeys['s'] || pressedKeys['arrowdown'];
@@ -2867,6 +2892,11 @@
     const w = WEAPONS[player.weaponIdx];
     document.getElementById('weapon-name').textContent = w.name;
     document.getElementById('weapon-ammo').textContent = player.ammo[w.id] === Infinity ? '∞' : player.ammo[w.id];
+
+    const midiHudEl = document.getElementById('midi-track-hud');
+    if (midiHudEl && window.MidiSoundtrack) {
+      midiHudEl.textContent = window.MidiSoundtrack.getCurrentTrackLabel();
+    }
 
     // Respect bars
     document.getElementById('respect-syndicate').style.width = GANGS.syndicate.respect + '%';
