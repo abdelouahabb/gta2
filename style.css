@@ -1,0 +1,386 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+body, html {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: #06060c;
+  font-family: 'Courier New', Courier, monospace, sans-serif;
+  color: #f0f0f0;
+}
+
+#gameCanvas {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+  cursor: crosshair;
+}
+
+/* Subtle CRT Scanline & Vignette Overlay */
+#crt-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 5;
+  background:
+    radial-gradient(circle at center, rgba(0,0,0,0) 60%, rgba(0,0,0,0.55) 100%),
+    repeating-linear-gradient(
+      0deg,
+      rgba(255, 255, 255, 0.015) 0px,
+      rgba(255, 255, 255, 0.015) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+}
+
+/* HUD Containers */
+#hud-left {
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 265px;
+  pointer-events: none;
+}
+
+#hud-center {
+  position: fixed;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+}
+
+#hud-right {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  width: 250px;
+  pointer-events: none;
+}
+
+#hud-bottom-left {
+  position: fixed;
+  bottom: 16px;
+  left: 16px;
+  z-index: 10;
+  pointer-events: none;
+}
+
+#hud-bottom-right {
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* GTA 2 Respect-O-Meter */
+.respect-panel, .mission-panel, .score-panel, .vitals-panel, .weapon-panel, .controls-card {
+  background: rgba(10, 12, 22, 0.85);
+  border: 2px solid rgba(255, 255, 255, 0.16);
+  border-radius: 6px;
+  padding: 10px 12px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.7), inset 0 0 12px rgba(255, 0, 128, 0.08);
+  backdrop-filter: blur(4px);
+}
+
+.panel-header, .mission-header, .weapon-header, .controls-title {
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  color: #9aa8c7;
+  margin-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  padding-bottom: 3px;
+}
+
+.respect-row {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-bottom: 7px;
+}
+
+.respect-row:last-child {
+  margin-bottom: 0;
+}
+
+.gang-label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+
+.neon-pink { color: #ff2a85; text-shadow: 0 0 8px rgba(255, 42, 133, 0.7); }
+.neon-cyan { color: #00f0ff; text-shadow: 0 0 8px rgba(0, 240, 255, 0.7); }
+.neon-lime { color: #39ff14; text-shadow: 0 0 8px rgba(57, 255, 20, 0.7); }
+
+.respect-bar-bg {
+  width: 100%;
+  height: 8px;
+  background: #171a26;
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.respect-bar-fill {
+  height: 100%;
+  transition: width 0.25s ease;
+}
+
+.fill-pink { background: linear-gradient(90deg, #a30046, #ff2a85); box-shadow: 0 0 8px #ff2a85; }
+.fill-cyan { background: linear-gradient(90deg, #006b8f, #00f0ff); box-shadow: 0 0 8px #00f0ff; }
+.fill-lime { background: linear-gradient(90deg, #157a00, #39ff14); box-shadow: 0 0 8px #39ff14; }
+
+/* Mission Panel */
+.mission-title {
+  font-size: 14px;
+  font-weight: 900;
+  color: #ffe600;
+  text-shadow: 0 0 8px rgba(255, 230, 0, 0.6);
+  margin-bottom: 4px;
+}
+
+.mission-desc {
+  font-size: 12px;
+  line-height: 1.35;
+  color: #d6deeb;
+}
+
+.mission-timer {
+  margin-top: 6px;
+  font-size: 16px;
+  font-weight: 900;
+  color: #ff3b3b;
+  text-shadow: 0 0 10px rgba(255, 59, 59, 0.8);
+}
+
+/* Wanted Stars */
+#wanted-container {
+  display: flex;
+  gap: 8px;
+  background: rgba(8, 10, 18, 0.82);
+  padding: 6px 16px;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.7);
+}
+
+.cop-star {
+  font-size: 24px;
+  color: rgba(255, 255, 255, 0.14);
+  transition: transform 0.15s ease, color 0.15s ease;
+}
+
+.cop-star.active-blue {
+  color: #2979ff;
+  text-shadow: 0 0 14px #2979ff, 0 0 4px #ffffff;
+  transform: scale(1.18);
+}
+
+.cop-star.active-red {
+  color: #ff1744;
+  text-shadow: 0 0 14px #ff1744, 0 0 4px #ffffff;
+  transform: scale(1.18);
+}
+
+/* Arcade Center Banner */
+.banner-message {
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: #ffe600;
+  text-shadow:
+    0 0 12px rgba(255, 42, 133, 0.95),
+    3px 3px 0px #000;
+  text-align: center;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.radio-banner {
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  color: #00f0ff;
+  background: rgba(8, 12, 24, 0.85);
+  border: 1px solid #00f0ff;
+  padding: 4px 12px;
+  border-radius: 4px;
+  text-shadow: 0 0 8px #00f0ff;
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* Top-Right Cash & Vitals */
+.score-panel {
+  width: 100%;
+  text-align: right;
+}
+
+.cash-text {
+  font-size: 26px;
+  font-weight: 900;
+  color: #39ff14;
+  letter-spacing: 1.5px;
+  text-shadow: 0 0 10px rgba(57, 255, 20, 0.6), 2px 2px 0 #000;
+}
+
+.mult-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.mult-badge {
+  background: #ff2a85;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 900;
+  padding: 2px 7px;
+  border-radius: 4px;
+  box-shadow: 0 0 10px rgba(255, 42, 133, 0.8);
+}
+
+.vehicle-badge {
+  font-size: 12px;
+  font-weight: 800;
+  color: #00f0ff;
+  letter-spacing: 1px;
+}
+
+.vitals-panel {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.vital-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.vital-icon {
+  font-size: 16px;
+  width: 18px;
+  text-align: center;
+}
+
+.vital-icon.heart { color: #ff2a55; text-shadow: 0 0 8px #ff2a55; }
+.vital-icon.shield { color: #00d0ff; text-shadow: 0 0 8px #00d0ff; }
+
+.vital-bar-bg {
+  flex: 1;
+  height: 10px;
+  background: #171a26;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.vital-bar-fill {
+  height: 100%;
+  transition: width 0.15s ease;
+}
+
+.fill-health { background: linear-gradient(90deg, #b00020, #ff2a55); box-shadow: 0 0 8px #ff2a55; }
+.fill-armor { background: linear-gradient(90deg, #005b9f, #00e5ff); box-shadow: 0 0 8px #00e5ff; }
+
+.vital-num {
+  font-size: 12px;
+  font-weight: 900;
+  width: 28px;
+  text-align: right;
+}
+
+.weapon-panel {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.weapon-name {
+  font-size: 15px;
+  font-weight: 900;
+  color: #ffe600;
+  text-shadow: 0 0 8px rgba(255, 230, 0, 0.5);
+}
+
+.weapon-ammo {
+  font-size: 13px;
+  font-weight: 800;
+  color: #ffffff;
+  margin-top: 2px;
+}
+
+/* Minimap */
+.minimap-frame {
+  background: rgba(8, 10, 18, 0.9);
+  border: 2px solid rgba(0, 240, 255, 0.45);
+  border-radius: 8px;
+  padding: 6px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.8), 0 0 15px rgba(0, 240, 255, 0.2);
+}
+
+#minimapCanvas {
+  display: block;
+  border-radius: 4px;
+  background: #09131c;
+}
+
+.minimap-label {
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 1.5px;
+  color: #00f0ff;
+  text-align: center;
+  margin-top: 4px;
+}
+
+/* Controls Card */
+.controls-card {
+  font-size: 11px;
+  line-height: 1.55;
+  color: #b8c4d9;
+}
+
+.controls-card div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.controls-card span {
+  color: #ffe600;
+  font-weight: 800;
+}

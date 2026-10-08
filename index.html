@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GTA VI: VICE OVERHEAD (1999 / 2026 Edition)</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <canvas id="gameCanvas"></canvas>
+
+  <!-- Retro CRT / Scanline & Vignette Overlay -->
+  <div id="crt-overlay"></div>
+
+  <!-- Top-Left: Gang Respect Meters & Payphone Mission Info -->
+  <div id="hud-left">
+    <div class="respect-panel">
+      <div class="panel-header">RESPECT-O-METER</div>
+      <div class="respect-row">
+        <span class="gang-label neon-pink">FLAMINGO SYNDICATE</span>
+        <div class="respect-bar-bg">
+          <div id="respect-syndicate" class="respect-bar-fill fill-pink" style="width: 50%;"></div>
+        </div>
+      </div>
+      <div class="respect-row">
+        <span class="gang-label neon-cyan">CHROME RUNNERS</span>
+        <div class="respect-bar-bg">
+          <div id="respect-runners" class="respect-bar-fill fill-cyan" style="width: 50%;"></div>
+        </div>
+      </div>
+      <div class="respect-row">
+        <span class="gang-label neon-lime">GATOR KINGS</span>
+        <div class="respect-bar-bg">
+          <div id="respect-gators" class="respect-bar-fill fill-lime" style="width: 50%;"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="mission-box" class="mission-panel">
+      <div class="mission-header">PAYPHONE DISPATCH</div>
+      <div id="mission-title" class="mission-title">FREE ROAM</div>
+      <div id="mission-desc" class="mission-desc">Find a ringing green payphone to start a contract, or cause chaos in Vice City!</div>
+      <div id="mission-timer" class="mission-timer hidden">00:00</div>
+    </div>
+  </div>
+
+  <!-- Top-Center: Wanted Cop Heads & Arcade Announcer -->
+  <div id="hud-center">
+    <div id="wanted-container">
+      <div class="cop-star" data-level="1">★</div>
+      <div class="cop-star" data-level="2">★</div>
+      <div class="cop-star" data-level="3">★</div>
+      <div class="cop-star" data-level="4">★</div>
+      <div class="cop-star" data-level="5">★</div>
+      <div class="cop-star" data-level="6">★</div>
+    </div>
+    <div id="banner-message" class="banner-message">WELCOME TO LEONIDA</div>
+    <div id="radio-banner" class="radio-banner hidden">📻 V-ROCK SYNTH FM</div>
+  </div>
+
+  <!-- Top-Right: Cash, Multiplier, Health, Armor, Weapon -->
+  <div id="hud-right">
+    <div class="score-panel">
+      <div id="cash-display" class="cash-text">$00000500</div>
+      <div class="mult-row">
+        <span id="multiplier-badge" class="mult-badge">x1</span>
+        <span id="vehicle-name-hud" class="vehicle-badge">ON FOOT</span>
+      </div>
+    </div>
+
+    <div class="vitals-panel">
+      <div class="vital-item">
+        <span class="vital-icon heart">♥</span>
+        <div class="vital-bar-bg">
+          <div id="health-bar" class="vital-bar-fill fill-health" style="width: 100%;"></div>
+        </div>
+        <span id="health-val" class="vital-num">100</span>
+      </div>
+      <div class="vital-item">
+        <span class="vital-icon shield">⛨</span>
+        <div class="vital-bar-bg">
+          <div id="armor-bar" class="vital-bar-fill fill-armor" style="width: 50%;"></div>
+        </div>
+        <span id="armor-val" class="vital-num">50</span>
+      </div>
+    </div>
+
+    <div class="weapon-panel" id="weapon-panel">
+      <div class="weapon-header">WEAPON [1-5 / Q]</div>
+      <div id="weapon-name" class="weapon-name">9MM PISTOL</div>
+      <div id="weapon-ammo" class="weapon-ammo">∞</div>
+    </div>
+  </div>
+
+  <!-- Bottom-Left: Minimap & Controls Toggle -->
+  <div id="hud-bottom-left">
+    <div class="minimap-frame">
+      <canvas id="minimapCanvas" width="180" height="180"></canvas>
+      <div class="minimap-label">LEONIDA GPS // <span id="time-display">21:00</span></div>
+    </div>
+  </div>
+
+  <!-- Bottom-Right: Controls Quick Card -->
+  <div id="hud-bottom-right">
+    <div class="controls-card" id="controls-card">
+      <div class="controls-title">CONTROLS [H to Toggle]</div>
+      <div><span>WASD / Arrows</span> Move / Drive</div>
+      <div><span>SPACE</span> Handbrake / Drift</div>
+      <div><span>F / ENTER</span> Hijack / Exit Car</div>
+      <div><span>L-CLICK</span> Fire Weapon</div>
+      <div><span>1-5 or Q / Wheel</span> Switch Weapon</div>
+      <div><span>E</span> Horn / Police Siren</div>
+      <div><span>R</span> Change Radio Station</div>
+      <div><span>T</span> Toggle Time (Dusk/Night/Noon)</div>
+    </div>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
