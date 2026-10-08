@@ -477,16 +477,24 @@
   // 5. INPUT HANDLING
   // ==========================================
   const keys = {};
+  const pressedKeys = {};
   const mouse = { x: 0, y: 0, worldX: 0, worldY: 0, down: false };
 
   window.addEventListener('keydown', (e) => {
     sfx.init();
     const code = e.code;
+    const k = e.key ? e.key.toLowerCase() : '';
     keys[code] = true;
+    if (k) pressedKeys[k] = true;
+
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(code)) {
+      e.preventDefault();
+    }
 
     if (code === 'KeyF' || code === 'Enter') {
       toggleVehicle();
-    } else if (code === 'KeyQ') {
+    } else if (code === 'Tab' || code === 'KeyC') {
+      e.preventDefault();
       cycleWeapon(1);
     } else if (code === 'Digit1') {
       player.weaponIdx = 0; updateHUD();
@@ -517,6 +525,8 @@
 
   window.addEventListener('keyup', (e) => {
     keys[e.code] = false;
+    const k = e.key ? e.key.toLowerCase() : '';
+    if (k) pressedKeys[k] = false;
   });
 
   window.addEventListener('mousemove', (e) => {
@@ -1061,41 +1071,74 @@
       const v = player.vehicle;
       sfx.updateRadio(true);
 
+      const up = keys['KeyW'] || keys['ArrowUp'] || keys['KeyZ'] || pressedKeys['w'] || pressedKeys['z'] || pressedKeys['arrowup'];
+      const down = keys['KeyS'] || keys['ArrowDown'] || pressedKeys['s'] || pressedKeys['arrowdown'];
+      const left = keys['KeyA'] || keys['ArrowLeft'] || keys['KeyQ'] || pressedKeys['a'] || pressedKeys['q'] || pressedKeys['arrowleft'];
+      const right = keys['KeyD'] || keys['ArrowRight'] || pressedKeys['d'] || pressedKeys['arrowright'];
+      const handbrake = keys['Space'] || pressedKeys[' '];
+
       let throttle = 0;
-      if (keys['KeyW'] || keys['ArrowUp']) throttle += 1;
-      if (keys['KeyS'] || keys['ArrowDown']) throttle -= 0.65;
+      if (up) throttle += 1;
+      if (down) throttle -= 0.7;
 
       let steer = 0;
-      if (keys['KeyA'] || keys['ArrowLeft']) steer -= 1;
-      if (keys['KeyD'] || keys['ArrowRight']) steer += 1;
+      if (left) steer -= 1;
+      if (right) steer += 1;
 
-      const handbrake = keys['Space'];
+      // If the player presses Left/Right while stationary (without Up/Down),
+      // automatically apply forward throttle and steer toward that screen direction
+      // so both directional-style and classic GTA 2 tank-style controls work seamlessly!
+      if (throttle === 0 && steer !== 0) {
+        const targetScreenAngle = steer < 0 ? Math.PI : 0;
+        let angleDiff = targetScreenAngle - v.angle;
+        while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+        while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
 
-      // Forward & lateral velocity components
-      const cos = Math.cos(v.angle);
-      const sin = Math.sin(v.angle);
-      const forwardSpeed = v.vx * cos + v.vy * sin;
-      const lateralSpeed = -v.vx * sin + v.vy * cos;
-
-      // Apply engine force
-      if (throttle !== 0) {
-        v.vx += cos * throttle * v.accel * dt;
-        v.vy += sin * throttle * v.accel * dt;
+        throttle = 0.88;
+        if (Math.abs(angleDiff) > 0.08) {
+          steer = Math.sign(angleDiff);
+        } else {
+          v.angle = targetScreenAngle;
+          steer = 0;
+        }
       }
 
-      // Steering scales with speed
-      const speedFactor = Math.min(1, Math.abs(forwardSpeed) / 140);
-      const dirSign = forwardSpeed >= -10 ? 1 : -1;
-      const turnRate = (handbrake ? 3.8 : 2.8) * speedFactor * dirSign;
-      v.angle += steer * turnRate * dt;
+      // Compute forward & lateral velocity components AFTER applying engine throttle
+      let cos = Math.cos(v.angle);
+      let sin = Math.sin(v.angle);
+      let forwardSpeed = v.vx * cos + v.vy * sin;
+      let lateralSpeed = -v.vx * sin + v.vy * cos;
 
-      // Lateral tire friction (Drifting!)
-      const grip = handbrake ? 0.985 : (1 - v.grip * 8.5 * dt);
-      const newLat = lateralSpeed * Math.max(0, grip);
-      const newFwd = forwardSpeed * (handbrake ? (1 - 2.6 * dt) : (1 - 0.85 * dt));
+      // Apply engine acceleration directly to forwardSpeed
+      if (throttle !== 0) {
+        forwardSpeed += throttle * v.accel * dt;
+      } else {
+        // Natural rolling resistance when off throttle
+        forwardSpeed *= Math.max(0, 1 - 1.6 * dt);
+      }
 
-      v.vx = cos * newFwd - sin * newLat;
-      v.vy = sin * newFwd + cos * newLat;
+      if (handbrake) {
+        forwardSpeed *= Math.max(0, 1 - 3.5 * dt);
+      }
+
+      // Steering (responsive at both low and high speeds)
+      const absFwd = Math.abs(forwardSpeed);
+      if (steer !== 0 && (absFwd > 5 || throttle !== 0)) {
+        const speedFactor = Math.max(0.45, Math.min(1.0, absFwd / 160));
+        const dirSign = forwardSpeed >= -15 ? 1 : -1;
+        const turnRate = (handbrake ? 4.2 : 3.2) * speedFactor * dirSign;
+        v.angle += steer * turnRate * dt;
+        cos = Math.cos(v.angle);
+        sin = Math.sin(v.angle);
+      }
+
+      // Lateral tire grip (drifting when handbraking or cornering hard)
+      const gripFactor = handbrake ? 0.985 : Math.max(0, 1 - v.grip * 7.5 * dt);
+      lateralSpeed *= gripFactor;
+
+      // Reconstruct world velocity vector (vx, vy)
+      v.vx = cos * forwardSpeed - sin * lateralSpeed;
+      v.vy = sin * forwardSpeed + cos * lateralSpeed;
 
       // Speed cap
       const totalSpd = Math.hypot(v.vx, v.vy);
@@ -1105,7 +1148,7 @@
       }
 
       // Leave tire skidmarks & smoke when drifting or handbraking
-      if ((Math.abs(lateralSpeed) > 130 || (handbrake && totalSpd > 140))) {
+      if ((Math.abs(lateralSpeed) > 110 || (handbrake && totalSpd > 130))) {
         const rearX = v.x - cos * (v.w * 0.36);
         const rearY = v.y - sin * (v.w * 0.36);
         const sideX = -sin * (v.h * 0.38);
@@ -1128,12 +1171,12 @@
       player.x = v.x;
       player.y = v.y;
     } else {
-      // On Foot Controls
+      // On Foot Controls (Supports WASD, ZQSD, and Arrow Keys)
       let mx = 0, my = 0;
-      if (keys['KeyW'] || keys['ArrowUp']) my -= 1;
-      if (keys['KeyS'] || keys['ArrowDown']) my += 1;
-      if (keys['KeyA'] || keys['ArrowLeft']) mx -= 1;
-      if (keys['KeyD'] || keys['ArrowRight']) mx += 1;
+      if (keys['KeyW'] || keys['ArrowUp'] || keys['KeyZ'] || pressedKeys['w'] || pressedKeys['z'] || pressedKeys['arrowup']) my -= 1;
+      if (keys['KeyS'] || keys['ArrowDown'] || pressedKeys['s'] || pressedKeys['arrowdown']) my += 1;
+      if (keys['KeyA'] || keys['ArrowLeft'] || keys['KeyQ'] || pressedKeys['a'] || pressedKeys['q'] || pressedKeys['arrowleft']) mx -= 1;
+      if (keys['KeyD'] || keys['ArrowRight'] || pressedKeys['d'] || pressedKeys['arrowright']) mx += 1;
 
       const len = Math.hypot(mx, my);
       const walkSpeed = 235;
