@@ -334,6 +334,7 @@
             w: TILE_SIZE - pad * 2,
             h: TILE_SIZE - pad * 2,
             height,
+            roofStyle: (x * 3 + y * 5) % 3,
             wallColor: pal.wall,
             roofColor: pal.roof,
             neonColor: pal.neon,
@@ -649,6 +650,7 @@
       gators:   ['#39ff14']
     };
     const palette = colors[gang || role] || colors.civilian;
+    const skinTones = ['#f5d0b5', '#e2b28f', '#c68b59', '#8d5524', '#f8d9c0'];
     const ped = {
       x,
       y,
@@ -660,6 +662,8 @@
       role, // 'civilian', 'police', 'gang', 'bounty'
       gang,
       color: palette[Math.floor(Math.random() * palette.length)],
+      skinColor: skinTones[Math.floor(Math.random() * skinTones.length)],
+      stepPhase: Math.random() * 10,
       aiTimer: Math.random() * 2,
       shootTimer: 0.6 + Math.random() * 0.8,
       panicTimer: 0
@@ -1297,6 +1301,28 @@
     const originY = player.y;
     const baseAngle = Math.atan2(mouse.worldY - originY, mouse.worldX - originX);
 
+    // Muzzle flash & brass shell casing ejection
+    const muzX = originX + Math.cos(baseAngle) * 20;
+    const muzY = originY + Math.sin(baseAngle) * 20;
+    particles.push({
+      x: muzX, y: muzY, vx: 0, vy: 0,
+      r: w.explosive ? 11 : 7,
+      color: '#fef08a',
+      life: 0.06, maxLife: 0.06
+    });
+    if (!w.flame && !w.explosive) {
+      const sideAng = baseAngle + Math.PI * 0.5 + (Math.random() - 0.5) * 0.4;
+      particles.push({
+        x: originX + Math.cos(baseAngle) * 10,
+        y: originY + Math.sin(baseAngle) * 10,
+        vx: Math.cos(sideAng) * (55 + Math.random() * 40),
+        vy: Math.sin(sideAng) * (55 + Math.random() * 40),
+        r: 1.8,
+        color: '#facc15',
+        life: 0.55, maxLife: 0.55
+      });
+    }
+
     for (let i = 0; i < w.count; i++) {
       const a = baseAngle + (Math.random() - 0.5) * w.spread;
       bullets.push({
@@ -1505,6 +1531,10 @@
         }
       }
 
+      if (Math.hypot(p.vx, p.vy) > 10) {
+        p.stepPhase += dt * (p.panicTimer > 0 ? 15 : 8);
+      }
+
       p.x += p.vx * dt;
       p.y += p.vy * dt;
       resolveBuildingCollisions(p, p.radius, false);
@@ -1626,7 +1656,8 @@
     const minGY = Math.max(0, Math.floor((camera.y - halfH) / TILE_SIZE));
     const maxGY = Math.min(GRID_H - 1, Math.floor((camera.y + halfH) / TILE_SIZE));
 
-    // 1. Draw Ground Tiles (Roads, Sidewalks, Beach, Ocean, Pay N' Spray)
+    // 1. Draw Ground Tiles (Textured Asphalt, Concrete Sidewalks, Beach Sand, Ocean, Pay N' Spray)
+    const sf = window.SpriteForge;
     for (let gy = minGY; gy <= maxGY; gy++) {
       for (let gx = minGX; gx <= maxGX; gx++) {
         const t = worldGrid[gy][gx];
@@ -1634,69 +1665,93 @@
         const wy = gy * TILE_SIZE;
 
         if (t === 0) {
-          // Asphalt Road
-          ctx.fillStyle = '#181b26';
-          ctx.fillRect(wx, wy, TILE_SIZE, TILE_SIZE);
+          // Textured Weathered Asphalt Road
+          ctx.drawImage(sf.textures.asphalt, wx, wy, TILE_SIZE, TILE_SIZE);
 
-          // Yellow double center lines or dashed lane markings
-          ctx.fillStyle = '#eab308';
+          // Road Markings: Double yellow centerline, dashed lanes, manhole covers, crosswalks
           const isRoadX = (gx % 3 === 0);
           const isRoadY = (gy % 3 === 0);
           if (isRoadX && !isRoadY) {
-            for (let d = 16; d < TILE_SIZE; d += 40) {
-              ctx.fillRect(wx + TILE_SIZE * 0.5 - 2, wy + d, 4, 20);
+            // Double yellow center divider
+            ctx.fillStyle = 'rgba(234, 179, 8, 0.78)';
+            ctx.fillRect(wx + TILE_SIZE * 0.5 - 4, wy, 2.5, TILE_SIZE);
+            ctx.fillRect(wx + TILE_SIZE * 0.5 + 1.5, wy, 2.5, TILE_SIZE);
+            // White lane dashes
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+            for (let d = 18; d < TILE_SIZE; d += 40) {
+              ctx.fillRect(wx + TILE_SIZE * 0.25, wy + d, 2, 18);
+              ctx.fillRect(wx + TILE_SIZE * 0.75, wy + d, 2, 18);
             }
           } else if (isRoadY && !isRoadX) {
-            for (let d = 16; d < TILE_SIZE; d += 40) {
-              ctx.fillRect(wx + d, wy + TILE_SIZE * 0.5 - 2, 20, 4);
+            ctx.fillStyle = 'rgba(234, 179, 8, 0.78)';
+            ctx.fillRect(wx, wy + TILE_SIZE * 0.5 - 4, TILE_SIZE, 2.5);
+            ctx.fillRect(wx, wy + TILE_SIZE * 0.5 + 1.5, TILE_SIZE, 2.5);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+            for (let d = 18; d < TILE_SIZE; d += 40) {
+              ctx.fillRect(wx + d, wy + TILE_SIZE * 0.25, 18, 2);
+              ctx.fillRect(wx + d, wy + TILE_SIZE * 0.75, 18, 2);
             }
           } else if (isRoadX && isRoadY) {
-            // Zebra crosswalks at intersections
-            ctx.fillStyle = 'rgba(255,255,255,0.22)';
-            for (let c = 20; c < TILE_SIZE - 20; c += 18) {
-              ctx.fillRect(wx + c, wy + 6, 10, 18);
-              ctx.fillRect(wx + c, wy + TILE_SIZE - 24, 10, 18);
+            // Zebra crosswalks on all 4 sides of intersection + iron manhole cover
+            ctx.fillStyle = 'rgba(240, 244, 248, 0.38)';
+            for (let c = 22; c < TILE_SIZE - 22; c += 16) {
+              ctx.fillRect(wx + c, wy + 5, 9, 18);
+              ctx.fillRect(wx + c, wy + TILE_SIZE - 23, 9, 18);
+              ctx.fillRect(wx + 5, wy + c, 18, 9);
+              ctx.fillRect(wx + TILE_SIZE - 23, wy + c, 18, 9);
             }
+            // Cast-iron manhole cover in intersection center
+            ctx.fillStyle = '#111318';
+            ctx.beginPath();
+            ctx.arc(wx + TILE_SIZE * 0.5, wy + TILE_SIZE * 0.5, 9, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#334155';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
           }
         } else if (t === 1) {
-          // Concrete Sidewalk base under buildings
-          ctx.fillStyle = '#292e3e';
-          ctx.fillRect(wx, wy, TILE_SIZE, TILE_SIZE);
-          ctx.strokeStyle = '#383f54';
-          ctx.lineWidth = 2;
-          ctx.strokeRect(wx + 2, wy + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+          // Textured Concrete Sidewalk & Curb Slabs
+          ctx.drawImage(sf.textures.sidewalk, wx, wy, TILE_SIZE, TILE_SIZE);
         } else if (t === 2) {
-          // Neon Park Grass
-          ctx.fillStyle = '#133824';
-          ctx.fillRect(wx, wy, TILE_SIZE, TILE_SIZE);
-          ctx.strokeStyle = '#292e3e';
-          ctx.lineWidth = 10;
-          ctx.strokeRect(wx, wy, TILE_SIZE, TILE_SIZE);
+          // Textured Lush Park Grass + Sidewalk Border
+          ctx.drawImage(sf.textures.sidewalk, wx, wy, TILE_SIZE, TILE_SIZE);
+          ctx.drawImage(sf.textures.grass, wx + 12, wy + 12, TILE_SIZE - 24, TILE_SIZE - 24);
         } else if (t === 3) {
-          // Vice Beach Golden Sand
-          ctx.fillStyle = '#c29b61';
-          ctx.fillRect(wx, wy, TILE_SIZE, TILE_SIZE);
+          // Textured Rippled Beach Sand
+          ctx.drawImage(sf.textures.sand, wx, wy, TILE_SIZE, TILE_SIZE);
         } else if (t === 4) {
-          // Animated Neon Ocean Waves
-          ctx.fillStyle = '#073b5c';
+          // Animated Ocean Water with Surf Foam along Beach Edge
+          const oceanGrad = ctx.createLinearGradient(wx, wy, wx + TILE_SIZE, wy);
+          oceanGrad.addColorStop(0, '#0284c7');
+          oceanGrad.addColorStop(0.35, '#0369a1');
+          oceanGrad.addColorStop(1, '#082f49');
+          ctx.fillStyle = oceanGrad;
           ctx.fillRect(wx, wy, TILE_SIZE, TILE_SIZE);
-          ctx.fillStyle = 'rgba(0, 240, 255, 0.22)';
-          const waveOffset = Math.sin(performance.now() * 0.003 + gy) * 14;
-          ctx.fillRect(wx + 18 + waveOffset, wy + 30, 8, TILE_SIZE - 60);
+
+          const waveOffset = Math.sin(performance.now() * 0.0028 + gy * 0.9) * 10;
+          if (gx === 22) {
+            // White foamy surf breaking onto the sand
+            ctx.fillStyle = 'rgba(240, 249, 255, 0.55)';
+            ctx.fillRect(wx + Math.max(0, waveOffset), wy, 10, TILE_SIZE);
+          }
+          ctx.fillStyle = 'rgba(125, 211, 252, 0.22)';
+          ctx.fillRect(wx + 48 + waveOffset, wy + 24, 6, TILE_SIZE - 48);
         } else if (t === 5) {
-          // Pay N' Spray Garage Floor
-          ctx.fillStyle = '#1f2433';
-          ctx.fillRect(wx, wy, TILE_SIZE, TILE_SIZE);
+          // Pay N' Spray Custom Garage Bay
+          ctx.drawImage(sf.textures.sidewalk, wx, wy, TILE_SIZE, TILE_SIZE);
+          ctx.fillStyle = '#111827';
+          ctx.fillRect(wx + 12, wy + 12, TILE_SIZE - 24, TILE_SIZE - 24);
+          // Caution yellow/black hazard stripes at entrance
           ctx.strokeStyle = '#39ff14';
-          ctx.lineWidth = 4;
+          ctx.lineWidth = 3;
           ctx.strokeRect(wx + 12, wy + 12, TILE_SIZE - 24, TILE_SIZE - 24);
           ctx.fillStyle = '#39ff14';
           ctx.font = 'bold 14px monospace';
           ctx.textAlign = 'center';
           ctx.fillText("PAY N' SPRAY", wx + TILE_SIZE * 0.5, wy + TILE_SIZE * 0.5 - 6);
-          ctx.fillStyle = '#ffffff';
-          ctx.font = '11px monospace';
-          ctx.fillText('FREE REPAIR & CLEAR COPS', wx + TILE_SIZE * 0.5, wy + TILE_SIZE * 0.5 + 14);
+          ctx.fillStyle = '#e2e8f0';
+          ctx.font = 'bold 10px monospace';
+          ctx.fillText('DRIVE IN: REPAIR & EVADE', wx + TILE_SIZE * 0.5, wy + TILE_SIZE * 0.5 + 12);
         }
       }
     }
@@ -1704,12 +1759,19 @@
     // 2. Draw Tire Skidmarks & Explosion Scorch Marks
     for (const sk of skidMarks) {
       if (sk.isScorch) {
-        ctx.fillStyle = 'rgba(10, 10, 12, 0.55)';
+        const sGrad = ctx.createRadialGradient(
+          (sk.x1 + sk.x2) * 0.5, (sk.y1 + sk.y2) * 0.5, 4,
+          (sk.x1 + sk.x2) * 0.5, (sk.y1 + sk.y2) * 0.5, sk.width * 0.65
+        );
+        sGrad.addColorStop(0, 'rgba(5, 5, 8, 0.85)');
+        sGrad.addColorStop(0.6, 'rgba(15, 15, 20, 0.45)');
+        sGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = sGrad;
         ctx.beginPath();
-        ctx.arc((sk.x1 + sk.x2) * 0.5, (sk.y1 + sk.y2) * 0.5, sk.width * 0.5, 0, Math.PI * 2);
+        ctx.arc((sk.x1 + sk.x2) * 0.5, (sk.y1 + sk.y2) * 0.5, sk.width * 0.65, 0, Math.PI * 2);
         ctx.fill();
       } else {
-        ctx.strokeStyle = `rgba(12, 12, 16, ${sk.alpha})`;
+        ctx.strokeStyle = `rgba(10, 10, 14, ${sk.alpha})`;
         ctx.lineWidth = sk.width;
         ctx.beginPath();
         ctx.moveTo(sk.x1, sk.y1);
@@ -1718,18 +1780,24 @@
       }
     }
 
-    // 3. Draw Pickups & Ringing Payphones
+    // 3. Draw Pickups & Ringing Payphone Booths
     const nowSec = performance.now() * 0.001;
     for (const pk of pickups) {
       if (pk.respawnTimer > 0) continue;
       ctx.save();
       ctx.translate(pk.x, pk.y);
-      ctx.rotate(nowSec * 2.2);
+      ctx.rotate(nowSec * 2.0);
       const col = pk.kind === 'health' ? '#ff2a55' : (pk.kind === 'armor' ? '#00e5ff' : '#ffe600');
-      ctx.fillStyle = col;
+      // Crate shadow & metallic military weapon case
+      ctx.fillStyle = 'rgba(0,0,0,0.55)';
+      ctx.fillRect(-10, -10, 24, 24);
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(-11, -11, 22, 22);
+      ctx.strokeStyle = col;
+      ctx.lineWidth = 2;
       ctx.shadowColor = col;
       ctx.shadowBlur = 12;
-      ctx.fillRect(-10, -10, 20, 20);
+      ctx.strokeRect(-11, -11, 22, 22);
       ctx.restore();
       ctx.fillStyle = '#ffffff';
       ctx.font = 'bold 10px monospace';
@@ -1742,15 +1810,21 @@
       ctx.save();
       ctx.translate(ph.x, ph.y);
       if (!activeMission) {
-        ctx.strokeStyle = `rgba(57, 255, 20, ${0.8 - pulse * 0.6})`;
-        ctx.lineWidth = 2;
+        ctx.strokeStyle = `rgba(57, 255, 20, ${0.85 - pulse * 0.65})`;
+        ctx.lineWidth = 2.5;
         ctx.beginPath();
-        ctx.arc(0, 0, 14 + pulse * 22, 0, Math.PI * 2);
+        ctx.arc(0, 0, 14 + pulse * 24, 0, Math.PI * 2);
         ctx.stroke();
       }
-      ctx.fillStyle = '#16a34a';
+      // Glass & Aluminum Payphone Booth
+      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      ctx.fillRect(-7, -7, 20, 20);
+      ctx.fillStyle = '#059669';
       ctx.fillRect(-9, -9, 18, 18);
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillRect(-6, -6, 12, 12);
       ctx.strokeStyle = '#39ff14';
+      ctx.lineWidth = 1.5;
       ctx.strokeRect(-9, -9, 18, 18);
       ctx.restore();
     }
@@ -1769,7 +1843,7 @@
       ctx.restore();
     }
 
-    // 4. Draw Pedestrians & Player (if on foot)
+    // 4. Draw Pedestrians & Player (using Multi-Frame Pre-Rendered Sprites)
     for (const p of peds) {
       drawPed(p);
     }
@@ -1777,21 +1851,23 @@
       drawPlayerOnFoot();
     }
 
-    // 5. Draw Vehicles (with Headlight Cones, Taillights, Police Lightbars)
+    // 5. Draw High-Detail Pre-Rendered Vehicles + Headlights & Sirens
     const lightsOn = TIME_MODES[timeMode].lightsOn;
     for (const v of vehicles) {
       drawVehicle(v, lightsOn);
     }
 
-    // 6. Draw Bullets & Particles
+    // 6. Draw Bullets (with Tracer Trails) & Particles
     for (const b of bullets) {
       ctx.save();
-      ctx.fillStyle = b.color;
+      ctx.strokeStyle = b.color;
+      ctx.lineWidth = b.explosive ? 4 : 2.2;
       ctx.shadowColor = b.color;
-      ctx.shadowBlur = 10;
+      ctx.shadowBlur = 8;
       ctx.beginPath();
-      ctx.arc(b.x, b.y, b.explosive ? 5 : 3, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.moveTo(b.x, b.y);
+      ctx.lineTo(b.x - b.vx * 0.028, b.y - b.vy * 0.028);
+      ctx.stroke();
       ctx.restore();
     }
 
@@ -1805,13 +1881,27 @@
       ctx.restore();
     }
 
-    // 7. Draw 2.5D Perspective Extruded Buildings & Rooftop Neon Signs
+    // 7. Draw 2.5D Perspective Extruded Buildings with Illuminated Windows & Textured Rooftops
     drawBuildings25D(minGX, maxGX, minGY, maxGY, lightsOn);
 
-    // 8. Draw Palm Trees
+    // 8. Draw Lush Tropical Palm Trees & Streetlamp Glow Halos
     for (const tree of palmTrees) {
       if (Math.abs(tree.x - camera.x) > halfW || Math.abs(tree.y - camera.y) > halfH) continue;
       drawPalmTree(tree);
+    }
+
+    if (lightsOn) {
+      for (const lamp of streetlamps) {
+        if (Math.abs(lamp.x - camera.x) > halfW || Math.abs(lamp.y - camera.y) > halfH) continue;
+        const lGrad = ctx.createRadialGradient(lamp.x, lamp.y, 2, lamp.x, lamp.y, 68);
+        lGrad.addColorStop(0, 'rgba(255, 245, 200, 0.32)');
+        lGrad.addColorStop(0.4, 'rgba(255, 190, 120, 0.12)');
+        lGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = lGrad;
+        ctx.beginPath();
+        ctx.arc(lamp.x, lamp.y, 68, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
 
     // 9. Draw Floating Cash / Score Popups
@@ -1837,29 +1927,18 @@
   }
 
   function drawPed(p) {
+    const sf = window.SpriteForge;
+    const isMoving = Math.hypot(p.vx, p.vy) > 10;
+    const frameIdx = isMoving ? (Math.floor(p.stepPhase) % 4) : 0;
+    const hasGun = p.role === 'police' || p.role === 'bounty' || p.role === 'gang';
+    const sprite = sf.getCharacterSprite(p.color, p.skinColor || '#f5d0b5', frameIdx, hasGun);
+
     ctx.save();
     ctx.translate(p.x, p.y);
     ctx.rotate(p.angle);
+    ctx.drawImage(sprite, -22, -22);
 
-    // Drop shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.45)';
-    ctx.beginPath();
-    ctx.arc(3, 4, p.radius, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Shoulders
-    ctx.fillStyle = p.color;
-    ctx.beginPath();
-    ctx.roundRect(-7, -11, 14, 22, 5);
-    ctx.fill();
-
-    // Head
-    ctx.fillStyle = '#fde047';
-    ctx.beginPath();
-    ctx.arc(0, 0, 6.5, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Bounty target halo
+    // Bounty target pulsing ring
     if (p.role === 'bounty') {
       ctx.strokeStyle = '#ff1744';
       ctx.lineWidth = 2.5;
@@ -1871,102 +1950,137 @@
   }
 
   function drawPlayerOnFoot() {
+    const sf = window.SpriteForge;
+    const isMoving = Math.hypot(player.vx, player.vy) > 10;
+    const frameIdx = isMoving ? (Math.floor(player.stepPhase) % 4) : 0;
+    const sprite = sf.getCharacterSprite('#ff2a85', '#f5d0b5', frameIdx, true);
+
     ctx.save();
     ctx.translate(player.x, player.y);
     ctx.rotate(player.angle);
-
-    // Neon Vice jacket shoulders
-    ctx.fillStyle = '#ff2a85';
-    ctx.shadowColor = '#ff2a85';
-    ctx.shadowBlur = 10;
-    ctx.beginPath();
-    ctx.roundRect(-8, -12, 16, 24, 6);
-    ctx.fill();
-    ctx.shadowBlur = 0;
-
-    // Extended gun arm
-    ctx.fillStyle = '#94a3b8';
-    ctx.fillRect(4, 3, 13, 4);
-
-    // Head
-    ctx.fillStyle = '#fde68a';
-    ctx.beginPath();
-    ctx.arc(0, 0, 7, 0, Math.PI * 2);
-    ctx.fill();
-
+    ctx.drawImage(sprite, -22, -22);
     ctx.restore();
   }
 
   function drawVehicle(v, lightsOn) {
+    const sf = window.SpriteForge;
+    const isDamaged = v.hp <= 0 || v.hp < v.maxHp * 0.45;
+    const sprite = sf.getVehicleSprite(v.typeKey, v.color, isDamaged);
+
     ctx.save();
     ctx.translate(v.x, v.y);
     ctx.rotate(v.angle);
 
-    // Headlight Beams (Dusk / Night)
+    // Dual Realistic Headlight Cones & Rear Red Brake Glow
     if (lightsOn && v.hp > 0) {
-      const grad = ctx.createLinearGradient(v.w * 0.4, 0, v.w * 0.4 + 190, 0);
-      grad.addColorStop(0, 'rgba(255, 250, 210, 0.32)');
-      grad.addColorStop(1, 'rgba(255, 250, 210, 0)');
+      const grad = ctx.createLinearGradient(v.w * 0.4, 0, v.w * 0.4 + 220, 0);
+      grad.addColorStop(0, 'rgba(254, 249, 195, 0.38)');
+      grad.addColorStop(0.5, 'rgba(254, 249, 195, 0.14)');
+      grad.addColorStop(1, 'rgba(254, 249, 195, 0)');
       ctx.fillStyle = grad;
+
+      // Left & Right headlight beams
       ctx.beginPath();
-      ctx.moveTo(v.w * 0.42, -v.h * 0.35);
-      ctx.lineTo(v.w * 0.42 + 190, -v.h * 1.6);
-      ctx.lineTo(v.w * 0.42 + 190, v.h * 1.6);
-      ctx.lineTo(v.w * 0.42, v.h * 0.35);
+      ctx.moveTo(v.w * 0.44, -v.h * 0.42);
+      ctx.lineTo(v.w * 0.44 + 220, -v.h * 1.85);
+      ctx.lineTo(v.w * 0.44 + 220, -v.h * 0.05);
       ctx.closePath();
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.moveTo(v.w * 0.44, v.h * 0.42);
+      ctx.lineTo(v.w * 0.44 + 220, v.h * 0.05);
+      ctx.lineTo(v.w * 0.44 + 220, v.h * 1.85);
+      ctx.closePath();
+      ctx.fill();
+
+      // Rear red taillight road reflection
+      const tailGrad = ctx.createRadialGradient(-v.w * 0.52, 0, 2, -v.w * 0.52, 0, 28);
+      tailGrad.addColorStop(0, 'rgba(239, 68, 68, 0.45)');
+      tailGrad.addColorStop(1, 'rgba(239, 68, 68, 0)');
+      ctx.fillStyle = tailGrad;
+      ctx.beginPath();
+      ctx.arc(-v.w * 0.52, 0, 28, 0, Math.PI * 2);
       ctx.fill();
     }
 
-    // Shadow
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
-    ctx.fillRect(-v.w * 0.5 + 5, -v.h * 0.5 + 6, v.w, v.h);
+    // Draw pre-rendered high-detail car sprite
+    ctx.drawImage(sprite, -42, -24);
 
-    // Main Chassis
-    ctx.fillStyle = v.hp <= 0 ? '#27272a' : v.color;
-    ctx.beginPath();
-    ctx.roundRect(-v.w * 0.5, -v.h * 0.5, v.w, v.h, 6);
-    ctx.fill();
-
-    // Racing Stripes
-    if (v.stripe && v.hp > 0) {
-      ctx.fillStyle = 'rgba(255,255,255,0.85)';
-      ctx.fillRect(-v.w * 0.5, -3, v.w, 2.5);
-      ctx.fillRect(-v.w * 0.5, 1.5, v.w, 2.5);
-    }
-
-    // Police White Doors
-    if (v.isPolice && !v.isSwat && v.hp > 0) {
-      ctx.fillStyle = '#f8fafc';
-      ctx.fillRect(-v.w * 0.18, -v.h * 0.5, v.w * 0.36, v.h);
-    }
-
-    // Windshield & Rear Window
-    ctx.fillStyle = '#0f172a';
-    ctx.fillRect(-v.w * 0.25, -v.h * 0.4, v.w * 0.52, v.h * 0.8);
-
-    // Roof Top
-    ctx.fillStyle = v.hp <= 0 ? '#18181b' : v.color;
-    ctx.fillRect(-v.w * 0.16, -v.h * 0.34, v.w * 0.32, v.h * 0.68);
-
-    // Police Flashing Red/Blue Lightbar
+    // Police Dynamic Red/Blue Strobe Lightbar & Ground Halo
     if (v.isPolice && v.sirenOn && v.hp > 0) {
       const isRed = Math.sin(v.sirenPhase) > 0;
-      ctx.fillStyle = isRed ? '#ff1744' : '#2979ff';
-      ctx.shadowColor = ctx.fillStyle;
-      ctx.shadowBlur = 18;
-      ctx.fillRect(-3, -v.h * 0.3, 6, v.h * 0.6);
-      ctx.shadowBlur = 0;
-    }
+      const strobeCol = isRed ? '#ff1744' : '#2979ff';
+      const sGrad = ctx.createRadialGradient(0, isRed ? -6 : 6, 2, 0, isRed ? -6 : 6, 56);
+      sGrad.addColorStop(0, isRed ? 'rgba(255, 23, 68, 0.65)' : 'rgba(41, 121, 255, 0.65)');
+      sGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = sGrad;
+      ctx.beginPath();
+      ctx.arc(0, isRed ? -6 : 6, 56, 0, Math.PI * 2);
+      ctx.fill();
 
-    // Red Brake Taillights
-    ctx.fillStyle = '#ff1744';
-    ctx.fillRect(-v.w * 0.5, -v.h * 0.4, 3, 5);
-    ctx.fillRect(-v.w * 0.5, v.h * 0.4 - 5, 3, 5);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(-3, isRed ? -9 : 3, 6, 6);
+    }
 
     ctx.restore();
   }
 
+  function drawWallWithWindows(x1, y1, x2, y2, rx2, ry2, rx1, ry1, wallColor, neonColor, lightsOn) {
+    ctx.fillStyle = wallColor;
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.lineTo(rx2, ry2);
+    ctx.lineTo(rx1, ry1);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#090d16';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Draw rows of illuminated office/hotel windows along the 3D perspective wall
+    const floors = 3;
+    const cols = 5;
+    for (let f = 0; f < floors; f++) {
+      const t1 = (f + 0.25) / floors;
+      const t2 = (f + 0.72) / floors;
+
+      const rowStartX1 = x1 + (rx1 - x1) * t1;
+      const rowStartY1 = y1 + (ry1 - y1) * t1;
+      const rowEndX1   = x2 + (rx2 - x2) * t1;
+      const rowEndY1   = y2 + (ry2 - y2) * t1;
+
+      const rowStartX2 = x1 + (rx1 - x1) * t2;
+      const rowStartY2 = y1 + (ry1 - y1) * t2;
+      const rowEndX2   = x2 + (rx2 - x2) * t2;
+      const rowEndY2   = y2 + (ry2 - y2) * t2;
+
+      for (let c = 0; c < cols; c++) {
+        // Deterministic window lit pattern
+        const isLit = ((f * 7 + c * 13 + Math.round(x1)) % 3 !== 0);
+        if (!isLit && lightsOn) continue;
+
+        const s1 = (c + 0.2) / cols;
+        const s2 = (c + 0.8) / cols;
+
+        ctx.fillStyle = lightsOn
+          ? ((c + f) % 4 === 0 ? neonColor : 'rgba(254, 240, 138, 0.75)')
+          : 'rgba(148, 163, 184, 0.45)';
+
+        ctx.beginPath();
+        ctx.moveTo(rowStartX1 + (rowEndX1 - rowStartX1) * s1, rowStartY1 + (rowEndY1 - rowStartY1) * s1);
+        ctx.lineTo(rowStartX1 + (rowEndX1 - rowStartX1) * s2, rowStartY1 + (rowEndY1 - rowStartY1) * s2);
+        ctx.lineTo(rowStartX2 + (rowEndX2 - rowStartX2) * s2, rowStartY2 + (rowEndY2 - rowStartY2) * s2);
+        ctx.lineTo(rowStartX2 + (rowEndX2 - rowStartX2) * s1, rowStartY2 + (rowEndY2 - rowStartY2) * s1);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+  }
+
   function drawBuildings25D(minGX, maxGX, minGY, maxGY, lightsOn) {
+    const sf = window.SpriteForge;
     for (const b of buildings) {
       const gx = Math.floor(b.x / TILE_SIZE);
       const gy = Math.floor(b.y / TILE_SIZE);
@@ -1974,6 +2088,10 @@
 
       const cx = b.x + b.w * 0.5;
       const cy = b.y + b.h * 0.5;
+
+      // Ground Ambient Shadow around building base
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+      ctx.fillRect(b.x - 6, b.y - 6, b.w + 16, b.h + 16);
 
       // 2.5D Perspective Offset relative to camera center
       const factor = b.height * 0.0022;
@@ -1983,100 +2101,65 @@
       const rx = b.x + offX;
       const ry = b.y + offY;
 
-      // Draw 3D Extruded Side Walls connecting Base (b.x, b.y) to Roof (rx, ry)
-      ctx.fillStyle = b.wallColor;
-      ctx.strokeStyle = '#090d16';
-      ctx.lineWidth = 1.5;
-
-      // Top/Bottom Wall
+      // Top or Bottom Visible Facade with Illuminated Windows
       if (ry > b.y) {
-        ctx.beginPath();
-        ctx.moveTo(b.x, b.y);
-        ctx.lineTo(b.x + b.w, b.y);
-        ctx.lineTo(rx + b.w, ry);
-        ctx.lineTo(rx, ry);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
+        drawWallWithWindows(b.x, b.y, b.x + b.w, b.y, rx + b.w, ry, rx, ry, b.wallColor, b.neonColor, lightsOn);
       } else {
-        ctx.beginPath();
-        ctx.moveTo(b.x, b.y + b.h);
-        ctx.lineTo(b.x + b.w, b.y + b.h);
-        ctx.lineTo(rx + b.w, ry + b.h);
-        ctx.lineTo(rx, ry + b.h);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
+        drawWallWithWindows(b.x, b.y + b.h, b.x + b.w, b.y + b.h, rx + b.w, ry + b.h, rx, ry + b.h, b.wallColor, b.neonColor, lightsOn);
       }
 
-      // Left/Right Wall
+      // Left or Right Visible Facade with Illuminated Windows
       if (rx > b.x) {
-        ctx.beginPath();
-        ctx.moveTo(b.x, b.y);
-        ctx.lineTo(b.x, b.y + b.h);
-        ctx.lineTo(rx, ry + b.h);
-        ctx.lineTo(rx, ry);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
+        drawWallWithWindows(b.x, b.y, b.x, b.y + b.h, rx, ry + b.h, rx, ry, b.wallColor, b.neonColor, lightsOn);
       } else {
-        ctx.beginPath();
-        ctx.moveTo(b.x + b.w, b.y);
-        ctx.lineTo(b.x + b.w, b.y + b.h);
-        ctx.lineTo(rx + b.w, ry + b.h);
-        ctx.lineTo(rx + b.w, ry);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
+        drawWallWithWindows(b.x + b.w, b.y, b.x + b.w, b.y + b.h, rx + b.w, ry + b.h, rx + b.w, ry, b.wallColor, b.neonColor, lightsOn);
       }
 
-      // Draw Rooftop
-      ctx.fillStyle = b.roofColor;
-      ctx.fillRect(rx, ry, b.w, b.h);
+      // Draw Detailed Pre-Rendered Architectural Rooftop Texture (HVAC fans, skylights, gravel/tiles)
+      const roofTex = sf.textures.roofs[b.roofStyle || 0];
+      ctx.drawImage(roofTex, rx, ry, b.w, b.h);
 
-      // Neon Roof Trim
-      ctx.strokeStyle = lightsOn ? b.neonColor : '#475569';
-      ctx.lineWidth = 2.5;
-      ctx.strokeRect(rx, ry, b.w, b.h);
-
-      // Rooftop HVAC Units
-      ctx.fillStyle = '#1e293b';
-      for (const ac of b.acUnits) {
-        ctx.fillRect(rx + ac.ox, ry + ac.oy, ac.w, ac.h);
+      // Neon Architectural Roof Perimeter Tube
+      if (lightsOn) {
+        ctx.save();
+        ctx.strokeStyle = b.neonColor;
+        ctx.shadowColor = b.neonColor;
+        ctx.shadowBlur = 10;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(rx + 2, ry + 2, b.w - 4, b.h - 4);
+        ctx.restore();
       }
 
-      // Glowing Neon Rooftop Sign
+      // Glowing Neon Rooftop Billboard Sign
       if (b.sign) {
         ctx.save();
+        ctx.fillStyle = 'rgba(9, 13, 22, 0.82)';
+        ctx.fillRect(rx + 14, ry + b.h - 28, b.w - 28, 20);
+        ctx.strokeStyle = b.neonColor;
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(rx + 14, ry + b.h - 28, b.w - 28, 20);
+
         ctx.fillStyle = b.neonColor;
         if (lightsOn) {
           ctx.shadowColor = b.neonColor;
           ctx.shadowBlur = 12;
         }
-        ctx.font = 'bold 12px monospace';
+        ctx.font = 'bold 11px monospace';
         ctx.textAlign = 'center';
-        ctx.fillText(b.sign, rx + b.w * 0.5, ry + b.h * 0.5 + 4);
+        ctx.fillText(b.sign, rx + b.w * 0.5, ry + b.h - 14);
         ctx.restore();
       }
     }
   }
 
   function drawPalmTree(tree) {
+    const sf = window.SpriteForge;
     ctx.save();
     ctx.translate(tree.x, tree.y);
-    ctx.strokeStyle = '#15803d';
-    ctx.lineWidth = 4;
-    for (let i = 0; i < 6; i++) {
-      const a = (i / 6) * Math.PI * 2;
-      ctx.beginPath();
-      ctx.moveTo(0, 0);
-      ctx.lineTo(Math.cos(a) * tree.r, Math.sin(a) * tree.r);
-      ctx.stroke();
-    }
-    ctx.fillStyle = '#78350f';
-    ctx.beginPath();
-    ctx.arc(0, 0, 5, 0, Math.PI * 2);
-    ctx.fill();
+    // Gentle breeze sway
+    const sway = Math.sin(performance.now() * 0.0018 + tree.x) * 0.06;
+    ctx.rotate(sway);
+    ctx.drawImage(sf.propSprites.palm, -48, -48);
     ctx.restore();
   }
 
