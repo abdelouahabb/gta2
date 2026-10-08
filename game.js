@@ -439,12 +439,16 @@
   };
 
   const VEHICLE_SPECS = {
-    banshee: { name: 'VICE BANSHEE GT', w: 54, h: 26, maxSpeed: 640, accel: 560, grip: 0.92, maxHp: 220, colors: ['#ff0055', '#00f0ff', '#ffe600', '#ffffff'], stripe: true },
-    stinger: { name: 'INFERNUS TURBO',  w: 56, h: 27, maxSpeed: 680, accel: 610, grip: 0.90, maxHp: 200, colors: ['#ff2a85', '#a855f7', '#39ff14'], stripe: false },
-    muscle:  { name: 'SABRE MUSCLE',    w: 56, h: 28, maxSpeed: 540, accel: 500, grip: 0.84, maxHp: 290, colors: ['#f97316', '#dc2626', '#2563eb'], stripe: true },
-    cab:     { name: 'KAUFMAN CAB',     w: 54, h: 27, maxSpeed: 480, accel: 430, grip: 0.91, maxHp: 270, colors: ['#facc15'], isCab: true },
-    police:  { name: 'VCPD INTERCEPTOR',w: 56, h: 27, maxSpeed: 610, accel: 550, grip: 0.93, maxHp: 310, colors: ['#111827'], isPolice: true },
-    swat:    { name: 'LEONIDA SWAT VAN',w: 66, h: 32, maxSpeed: 460, accel: 410, grip: 0.95, maxHp: 600, colors: ['#1e293b'], isPolice: true, isSwat: true }
+    banshee: { name: 'VICE BANSHEE GT',  w: 54, h: 26, maxSpeed: 640, accel: 560, grip: 0.92, maxHp: 220, mass: 1.0, colors: ['#ff0055', '#00f0ff', '#ffe600', '#ffffff'], stripe: true },
+    stinger: { name: 'INFERNUS TURBO',   w: 56, h: 27, maxSpeed: 680, accel: 610, grip: 0.90, maxHp: 200, mass: 1.0, colors: ['#ff2a85', '#a855f7', '#39ff14'], stripe: false },
+    muscle:  { name: 'SABRE MUSCLE',     w: 56, h: 28, maxSpeed: 540, accel: 500, grip: 0.84, maxHp: 290, mass: 1.4, colors: ['#f97316', '#dc2626', '#2563eb'], stripe: true },
+    cab:     { name: 'KAUFMAN CAB',      w: 54, h: 27, maxSpeed: 480, accel: 430, grip: 0.91, maxHp: 270, mass: 1.1, colors: ['#facc15'], isCab: true },
+    truck:   { name: 'HAULER 18-WHEELER',w: 96, h: 34, maxSpeed: 430, accel: 380, grip: 0.88, maxHp: 850, mass: 3.8, colors: ['#dc2626', '#2563eb', '#16a34a', '#ea580c'], isTruck: true },
+    bike:    { name: 'PCJ-600 SUPERBIKE',w: 38, h: 14, maxSpeed: 760, accel: 780, grip: 0.95, maxHp: 130, mass: 0.45, colors: ['#ff2a85', '#39ff14', '#00f0ff', '#facc15'], isBike: true, exposedRider: true },
+    skate:   { name: 'NEON SKATEBOARD',  w: 28, h: 10, maxSpeed: 390, accel: 520, grip: 0.97, maxHp: 90,  mass: 0.25, colors: ['#ff2a85', '#00f0ff', '#39ff14', '#ffe600'], isSkate: true, exposedRider: true },
+    jet:     { name: 'HYDRA VTOL JET',   w: 92, h: 80, maxSpeed: 1050,accel: 920, grip: 0.96, maxHp: 550, mass: 2.2, colors: ['#475569', '#334155', '#1e293b'], isJet: true },
+    police:  { name: 'VCPD INTERCEPTOR', w: 56, h: 27, maxSpeed: 610, accel: 550, grip: 0.93, maxHp: 310, mass: 1.2, colors: ['#111827'], isPolice: true },
+    swat:    { name: 'LEONIDA SWAT VAN', w: 66, h: 32, maxSpeed: 460, accel: 410, grip: 0.95, maxHp: 600, mass: 2.5, colors: ['#1e293b'], isPolice: true, isSwat: true }
   };
 
   const vehicles = [];
@@ -636,9 +640,15 @@
       grip: spec.grip,
       hp: spec.maxHp,
       maxHp: spec.maxHp,
+      mass: spec.mass || 1.0,
       color,
       stripe: spec.stripe,
       isCab: !!spec.isCab,
+      isTruck: !!spec.isTruck,
+      isBike: !!spec.isBike,
+      isSkate: !!spec.isSkate,
+      isJet: !!spec.isJet,
+      exposedRider: !!spec.exposedRider,
       isPolice: !!spec.isPolice,
       isSwat: !!spec.isSwat,
       sirenOn: !!spec.isPolice,
@@ -684,23 +694,39 @@
 
   // Initial City Traffic & Pedestrians
   function populateInitialEntities() {
-    // Spawn parked exotic cars near player start
-    spawnVehicle('banshee', 12 * TILE_SIZE + 125, 12 * TILE_SIZE + 35, 0, null);
-    spawnVehicle('stinger', 12 * TILE_SIZE + 35, 12 * TILE_SIZE + 125, Math.PI / 2, null);
-    spawnVehicle('muscle', 10 * TILE_SIZE + 80, 11 * TILE_SIZE + 40, 0, null);
+    // Spawn Showcase Vehicles right around the player's starting intersection (12, 12)
+    // so the player can immediately test the Jet, 18-Wheeler Truck, Motorcycle, Skateboard, and Sports Cars!
+    spawnVehicle('jet',     12 * TILE_SIZE + 80,  11 * TILE_SIZE + 70, -Math.PI / 2, null);
+    spawnVehicle('truck',   11 * TILE_SIZE + 55,  12 * TILE_SIZE + 80, 0, null);
+    spawnVehicle('bike',    12 * TILE_SIZE + 128, 12 * TILE_SIZE + 52, 0, null);
+    spawnVehicle('skate',   12 * TILE_SIZE + 45,  12 * TILE_SIZE + 45, 0, null);
+    spawnVehicle('banshee', 12 * TILE_SIZE + 125, 12 * TILE_SIZE + 115, 0, null);
+    spawnVehicle('stinger', 13 * TILE_SIZE + 40,  12 * TILE_SIZE + 80, 0, null);
 
-    // Spawn roaming traffic on road tiles
-    const types = ['banshee', 'stinger', 'muscle', 'cab', 'cab'];
-    for (let i = 0; i < 32; i++) {
+    // Spawn extra Hydra Fighter Jets at Helipad / Airport Plazas & Ocean Pier
+    spawnVehicle('jet', 13 * TILE_SIZE + 80, 13 * TILE_SIZE + 80, 0, null);
+    spawnVehicle('jet', 21 * TILE_SIZE + 80, 12 * TILE_SIZE + 80, -Math.PI / 2, null);
+    // Spawn extra Skateboards in parks and on the beach boardwalk
+    spawnVehicle('skate', 16 * TILE_SIZE + 80, 7 * TILE_SIZE + 80, 0, 'civilian');
+    spawnVehicle('skate', 21 * TILE_SIZE + 50, 10 * TILE_SIZE + 80, Math.PI / 2, 'civilian');
+    spawnVehicle('skate', 4 * TILE_SIZE + 80,  10 * TILE_SIZE + 80, 0, null);
+
+    // Spawn roaming traffic on road tiles (Trucks, Motorcycles, Skateboards, Sports Cars, Cabs)
+    const types = ['banshee', 'stinger', 'muscle', 'cab', 'truck', 'truck', 'bike', 'bike', 'skate'];
+    for (let i = 0; i < 42; i++) {
       const gx = (Math.floor(Math.random() * 7) * 3);
       const gy = Math.floor(Math.random() * 20) + 1;
       const wx = gx * TILE_SIZE + TILE_SIZE * 0.5;
       const wy = gy * TILE_SIZE + TILE_SIZE * 0.5;
-      if (Math.hypot(wx - player.x, wy - player.y) > 300) {
+      if (Math.hypot(wx - player.x, wy - player.y) > 260) {
         const t = types[Math.floor(Math.random() * types.length)];
         spawnVehicle(t, wx, wy, Math.PI / 2, 'civilian');
       }
     }
+
+    // Spawn 2 AI Patrol Jets flying across the Vice City skyline!
+    spawnVehicle('jet', 6 * TILE_SIZE, 6 * TILE_SIZE, 0, 'civilian');
+    spawnVehicle('jet', 18 * TILE_SIZE, 18 * TILE_SIZE, Math.PI, 'civilian');
 
     // Spawn pedestrians & gang members
     for (let i = 0; i < 75; i++) {
@@ -1193,6 +1219,55 @@
       player.y += player.vy * dt;
       player.angle = Math.atan2(mouse.worldY - player.y, mouse.worldX - player.x);
 
+      // Solid OBB collision between On-Foot Player and all Vehicles
+      for (const v of vehicles) {
+        const dx = player.x - v.x;
+        const dy = player.y - v.y;
+        if (Math.abs(dx) > 60 || Math.abs(dy) > 60) continue;
+
+        const cos = Math.cos(-v.angle);
+        const sin = Math.sin(-v.angle);
+        const localX = dx * cos - dy * sin;
+        const localY = dx * sin + dy * cos;
+
+        const hw = v.w * 0.5;
+        const hh = v.h * 0.5;
+        const cx = Math.max(-hw, Math.min(hw, localX));
+        const cy = Math.max(-hh, Math.min(hh, localY));
+        const distX = localX - cx;
+        const distY = localY - cy;
+        const distSq = distX * distX + distY * distY;
+
+        if (distSq < player.radius * player.radius && distSq > 0.0001) {
+          const dist = Math.sqrt(distSq);
+          const overlap = player.radius - dist;
+          const lnx = distX / dist;
+          const lny = distY / dist;
+          // Rotate normal back to world space
+          const wcos = Math.cos(v.angle);
+          const wsin = Math.sin(v.angle);
+          const wnx = lnx * wcos - lny * wsin;
+          const wny = lnx * wsin + lny * wcos;
+
+          player.x += wnx * overlap;
+          player.y += wny * overlap;
+
+          // If the car is moving fast into the player, apply real impact knockback & damage
+          const vSpeed = Math.hypot(v.vx, v.vy);
+          const approachDot = (v.vx * wnx + v.vy * wny);
+          if (approachDot > 90) {
+            player.vx += wnx * approachDot * 1.15;
+            player.vy += wny * approachDot * 1.15;
+            v.vx *= 0.72;
+            v.vy *= 0.72;
+            if (vSpeed > 150) {
+              damagePlayer((vSpeed - 120) * 0.14);
+              spawnSparks(player.x, player.y, 6, '#dc2626');
+            }
+          }
+        }
+      }
+
       resolveBuildingCollisions(player, player.radius, false);
     }
 
@@ -1392,46 +1467,119 @@
       if (v.driver === 'civilian' && v.hp > 0) {
         const cos = Math.cos(v.angle);
         const sin = Math.sin(v.angle);
-        const cruiseSpeed = 210;
-        v.vx += (cos * cruiseSpeed - v.vx) * 2.5 * dt;
-        v.vy += (sin * cruiseSpeed - v.vy) * 2.5 * dt;
 
-        // Turn at intersections or if blocked ahead
-        const lookX = v.x + cos * 68;
-        const lookY = v.y + sin * 68;
-        const gx = Math.floor(lookX / TILE_SIZE);
-        const gy = Math.floor(lookY / TILE_SIZE);
-        if (gx < 0 || gx >= GRID_W || gy < 0 || gy >= GRID_H || worldGrid[gy][gx] !== 0) {
-          v.angle += Math.PI * 0.5;
+        // Check for obstacles ahead (On-Foot Player, Player Car, other Vehicles, or Pedestrians)
+        let obstacleAhead = false;
+        let emergencyBrake = false;
+
+        // 1. Check distance & cone in front of car to Player
+        const toPlayerX = player.x - v.x;
+        const toPlayerY = player.y - v.y;
+        const distToPlayer = Math.hypot(toPlayerX, toPlayerY);
+        if (distToPlayer < 165) {
+          const forwardDot = (toPlayerX * cos + toPlayerY * sin) / (distToPlayer || 1);
+          const lateralDist = Math.abs(-toPlayerX * sin + toPlayerY * cos);
+          // If player is in front of the car or standing right next to the driver's door (hijack range)
+          if ((forwardDot > 0.35 && lateralDist < 48) || (!player.vehicle && distToPlayer < 75)) {
+            obstacleAhead = true;
+            emergencyBrake = true;
+            if (Math.random() < 0.025 && distToPlayer < 120) {
+              sfx.playHorn(false);
+            }
+          }
+        }
+
+        // 2. Check for other vehicles directly in front of this AI car
+        if (!obstacleAhead) {
+          for (const other of vehicles) {
+            if (other === v) continue;
+            const odx = other.x - v.x;
+            const ody = other.y - v.y;
+            const odist = Math.hypot(odx, ody);
+            if (odist < 130) {
+              const fDot = (odx * cos + ody * sin) / (odist || 1);
+              const lDist = Math.abs(-odx * sin + ody * cos);
+              if (fDot > 0.5 && lDist < 36) {
+                obstacleAhead = true;
+                break;
+              }
+            }
+          }
+        }
+
+        if (obstacleAhead) {
+          // Apply realistic hydraulic brakes + leave short tire marks if braking hard from speed
+          const curSpd = Math.hypot(v.vx, v.vy);
+          const brakeStrength = emergencyBrake ? 8.5 : 5.5;
+          v.vx *= Math.max(0, 1 - brakeStrength * dt);
+          v.vy *= Math.max(0, 1 - brakeStrength * dt);
+          if (curSpd < 12) {
+            v.vx = 0;
+            v.vy = 0;
+          } else if (curSpd > 140 && emergencyBrake) {
+            skidMarks.push({
+              x1: v.x - cos * 16, y1: v.y - sin * 16,
+              x2: v.x - cos * 16 - v.vx * dt, y2: v.y - sin * 16 - v.vy * dt,
+              width: 3.5, alpha: 0.35
+            });
+          }
+        } else {
+          const cruiseSpeed = 210;
+          v.vx += (cos * cruiseSpeed - v.vx) * 2.5 * dt;
+          v.vy += (sin * cruiseSpeed - v.vy) * 2.5 * dt;
+
+          // Turn at intersections or if road ends ahead
+          const lookX = v.x + cos * 68;
+          const lookY = v.y + sin * 68;
+          const gx = Math.floor(lookX / TILE_SIZE);
+          const gy = Math.floor(lookY / TILE_SIZE);
+          if (gx < 0 || gx >= GRID_W || gy < 0 || gy >= GRID_H || worldGrid[gy][gx] !== 0) {
+            v.angle += Math.PI * 0.5;
+          }
         }
       } else if (v.driver === 'police' && v.hp > 0) {
         if (player.wanted > 0) {
-          // Chase player aggressively!
-          const targetAngle = Math.atan2(player.y - v.y, player.x - v.x);
-          let diff = targetAngle - v.angle;
-          while (diff > Math.PI) diff -= Math.PI * 2;
-          while (diff < -Math.PI) diff += Math.PI * 2;
-          v.angle += Math.sign(diff) * Math.min(Math.abs(diff), 2.8 * dt);
-
-          const cos = Math.cos(v.angle);
-          const sin = Math.sin(v.angle);
-          v.vx += cos * v.accel * 0.78 * dt;
-          v.vy += sin * v.accel * 0.78 * dt;
-
-          // If close to on-foot player, hop out and shoot
           const dist = Math.hypot(player.x - v.x, player.y - v.y);
-          if (!player.vehicle && dist < 170) {
-            v.driver = null;
-            spawnPed(v.x + 28, v.y, 'police');
+          // If close to on-foot player, slam the brakes, leave skidmarks, and hop out to arrest/shoot!
+          if (!player.vehicle && dist < 155) {
+            v.vx *= Math.max(0, 1 - 7.5 * dt);
+            v.vy *= Math.max(0, 1 - 7.5 * dt);
+            if (Math.hypot(v.vx, v.vy) < 45) {
+              v.vx = 0;
+              v.vy = 0;
+              v.driver = null;
+              spawnPed(v.x + Math.cos(v.angle - Math.PI * 0.5) * 26, v.y + Math.sin(v.angle - Math.PI * 0.5) * 26, 'police');
+            }
+          } else {
+            // Chase player aggressively!
+            const targetAngle = Math.atan2(player.y - v.y, player.x - v.x);
+            let diff = targetAngle - v.angle;
+            while (diff > Math.PI) diff -= Math.PI * 2;
+            while (diff < -Math.PI) diff += Math.PI * 2;
+            v.angle += Math.sign(diff) * Math.min(Math.abs(diff), 2.8 * dt);
+
+            const cos = Math.cos(v.angle);
+            const sin = Math.sin(v.angle);
+            v.vx += cos * v.accel * 0.78 * dt;
+            v.vy += sin * v.accel * 0.78 * dt;
           }
         } else {
           v.sirenOn = false;
           v.driver = 'civilian';
         }
       } else if (!v.driver) {
-        // Coast to stop
-        v.vx *= (1 - 2.2 * dt);
-        v.vy *= (1 - 2.2 * dt);
+        // Unoccupied car rolling friction & angular damping
+        v.vx *= Math.max(0, 1 - 3.2 * dt);
+        v.vy *= Math.max(0, 1 - 3.2 * dt);
+        if (Math.hypot(v.vx, v.vy) < 5) {
+          v.vx = 0;
+          v.vy = 0;
+        }
+      }
+
+      if (v.angularVel) {
+        v.angle += v.angularVel * dt;
+        v.angularVel *= Math.max(0, 1 - 5.0 * dt);
       }
 
       v.x += v.vx * dt;
@@ -1439,51 +1587,85 @@
 
       resolveBuildingCollisions(v, Math.max(v.w, v.h) * 0.42, true);
 
-      // Vehicle-to-Vehicle Collisions
+      // Realistic Mass & Impulse Vehicle-to-Vehicle Collisions
       for (let j = i - 1; j >= 0; j--) {
         const v2 = vehicles[j];
         const dx = v2.x - v.x;
         const dy = v2.y - v.y;
         const dist = Math.hypot(dx, dy);
-        const minDist = 42;
+        const minDist = (v.w + v2.w) * 0.39;
         if (dist < minDist && dist > 0.01) {
           const nx = dx / dist;
           const ny = dy / dist;
           const overlap = minDist - dist;
-          v.x -= nx * overlap * 0.5;
-          v.y -= ny * overlap * 0.5;
-          v2.x += nx * overlap * 0.5;
-          v2.y += ny * overlap * 0.5;
 
-          const relVx = v.vx - v2.vx;
-          const relVy = v.vy - v2.vy;
-          const impact = Math.hypot(relVx, relVy);
-          if (impact > 180) {
-            spawnSparks((v.x + v2.x) * 0.5, (v.y + v2.y) * 0.5, 6);
-            v.hp -= impact * 0.04;
-            v2.hp -= impact * 0.04;
+          const m1 = v.isSwat ? 2.4 : (v.typeKey === 'muscle' ? 1.4 : 1.0);
+          const m2 = v2.isSwat ? 2.4 : (v2.typeKey === 'muscle' ? 1.4 : 1.0);
+          const totalM = m1 + m2;
+
+          v.x -= nx * overlap * (m2 / totalM);
+          v.y -= ny * overlap * (m2 / totalM);
+          v2.x += nx * overlap * (m1 / totalM);
+          v2.y += ny * overlap * (m1 / totalM);
+
+          const rvx = v2.vx - v.vx;
+          const rvy = v2.vy - v.vy;
+          const velAlongNormal = rvx * nx + rvy * ny;
+
+          if (velAlongNormal < 0) {
+            const restitution = 0.45;
+            const impulse = -(1 + restitution) * velAlongNormal / (1 / m1 + 1 / m2);
+            const ix = impulse * nx;
+            const iy = impulse * ny;
+
+            v.vx -= ix / m1;
+            v.vy -= iy / m1;
+            v2.vx += ix / m2;
+            v2.vy += iy / m2;
+
+            // Add realistic angular spin impulse on off-center impacts
+            const impactSpeed = Math.abs(velAlongNormal);
+            if (impactSpeed > 90) {
+              v.angularVel = (v.angularVel || 0) + (Math.random() - 0.5) * (impactSpeed / 120);
+              v2.angularVel = (v2.angularVel || 0) - (Math.random() - 0.5) * (impactSpeed / 120);
+            }
+            if (impactSpeed > 150) {
+              spawnSparks((v.x + v2.x) * 0.5, (v.y + v2.y) * 0.5, 8);
+              v.hp -= impactSpeed * 0.045;
+              v2.hp -= impactSpeed * 0.045;
+              if (v === player.vehicle || v2 === player.vehicle) {
+                camera.shake = Math.min(16, camera.shake + impactSpeed * 0.025);
+              }
+            }
           }
-
-          const avgVx = (v.vx + v2.vx) * 0.5;
-          const avgVy = (v.vy + v2.vy) * 0.5;
-          v.vx = avgVx - nx * 45;
-          v.vy = avgVy - ny * 45;
-          v2.vx = avgVx + nx * 45;
-          v2.vy = avgVy + ny * 45;
         }
       }
 
-      // Vehicle Roadkill / Running over Peds
+      // Vehicle Roadkill / Running over Peds (with solid momentum transfer)
       const vSpeed = Math.hypot(v.vx, v.vy);
-      if (vSpeed > 110) {
+      if (vSpeed > 40) {
         for (let k = peds.length - 1; k >= 0; k--) {
           const p = peds[k];
-          if (Math.hypot(p.x - v.x, p.y - v.y) < 30) {
-            p.hp -= vSpeed * 0.45;
-            if (p.hp <= 0 && v.driver === 'player') {
-              handlePedKilled(p, k);
-            } else if (p.hp <= 0) {
-              peds.splice(k, 1);
+          const pdx = p.x - v.x;
+          const pdy = p.y - v.y;
+          const pdist = Math.hypot(pdx, pdy);
+          if (pdist < 30 && pdist > 0.01) {
+            const pnx = pdx / pdist;
+            const pny = pdy / pdist;
+            p.x += pnx * (30 - pdist);
+            p.y += pny * (30 - pdist);
+            p.vx += v.vx * 0.85;
+            p.vy += v.vy * 0.85;
+            v.vx *= 0.92;
+            v.vy *= 0.92;
+
+            if (vSpeed > 110) {
+              p.hp -= vSpeed * 0.45;
+              if (p.hp <= 0 && v.driver === 'player') {
+                handlePedKilled(p, k);
+              } else if (p.hp <= 0) {
+                peds.splice(k, 1);
+              }
             }
           }
         }

@@ -272,15 +272,284 @@ window.SpriteForge = (() => {
     return `rgb(${r},${g},${b})`;
   }
 
+  function bodyGradFor(ctx, baseCol, halfH) {
+    const grad = ctx.createLinearGradient(0, -halfH, 0, halfH);
+    grad.addColorStop(0, darkenHex(baseCol, 0.68));
+    grad.addColorStop(0.22, lightenHex(baseCol, 38));
+    grad.addColorStop(0.5, baseCol);
+    grad.addColorStop(0.78, lightenHex(baseCol, 28));
+    grad.addColorStop(1, darkenHex(baseCol, 0.60));
+    return grad;
+  }
+
   function getVehicleSprite(typeKey, color, damaged = false) {
     const key = `${typeKey}_${color}_${damaged ? 'dmg' : 'ok'}`;
     if (carSprites[key]) return carSprites[key];
 
-    const cw = 84;
-    const ch = 48;
+    const isJet = typeKey === 'jet';
+    const isTruck = typeKey === 'truck';
+    const isBike = typeKey === 'bike';
+    const isSkate = typeKey === 'skate';
+
+    const cw = isJet ? 120 : (isTruck ? 116 : 84);
+    const ch = isJet ? 104 : (isTruck ? 56 : 48);
     const c = createCanvas(cw, ch);
     const ctx = c.getContext('2d');
     ctx.translate(cw * 0.5, ch * 0.5);
+
+    const baseCol = damaged ? '#27272a' : color;
+
+    // ----------------------------------------------------------
+    // SPECIAL SPRITE A: VCPD HYDRA VTOL FIGHTER JET
+    // ----------------------------------------------------------
+    if (isJet) {
+      // Swept delta wings
+      const wingGrad = ctx.createLinearGradient(-44, -44, 30, 44);
+      wingGrad.addColorStop(0, darkenHex(baseCol, 0.7));
+      wingGrad.addColorStop(0.5, lightenHex(baseCol, 28));
+      wingGrad.addColorStop(1, darkenHex(baseCol, 0.6));
+      ctx.fillStyle = wingGrad;
+      ctx.strokeStyle = '#0f172a';
+      ctx.lineWidth = 1.5;
+
+      // Main Delta Wings
+      ctx.beginPath();
+      ctx.moveTo(18, 0);
+      ctx.lineTo(-22, -46);
+      ctx.lineTo(-34, -46);
+      ctx.lineTo(-24, 0);
+      ctx.lineTo(-34, 46);
+      ctx.lineTo(-22, 46);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Rear horizontal stabilizers / tailfins
+      ctx.fillStyle = darkenHex(baseCol, 0.65);
+      ctx.beginPath();
+      ctx.moveTo(-26, 0);
+      ctx.lineTo(-48, -22);
+      ctx.lineTo(-54, -22);
+      ctx.lineTo(-42, 0);
+      ctx.lineTo(-54, 22);
+      ctx.lineTo(-48, 22);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Under-wing Sidewinder Missiles
+      if (!damaged) {
+        ctx.fillStyle = '#f8fafc';
+        ctx.fillRect(-16, -34, 20, 3);
+        ctx.fillRect(-16, 31, 20, 3);
+        ctx.fillStyle = '#ef4444';
+        ctx.fillRect(2, -34, 4, 3);
+        ctx.fillRect(2, 31, 4, 3);
+      }
+
+      // Supersonic Fuselage & Nose Cone
+      ctx.fillStyle = bodyGradFor(ctx, baseCol, 18);
+      ctx.beginPath();
+      ctx.moveTo(54, 0);
+      ctx.quadraticCurveTo(25, -11, -46, -8);
+      ctx.lineTo(-50, 0);
+      ctx.lineTo(-46, 8);
+      ctx.quadraticCurveTo(25, 11, 54, 0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Twin Afterburner Exhaust Nozzles
+      ctx.fillStyle = '#18181b';
+      ctx.fillRect(-52, -6, 6, 4.5);
+      ctx.fillRect(-52, 1.5, 6, 4.5);
+      if (!damaged) {
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillRect(-54, -5, 3, 2.5);
+        ctx.fillRect(-54, 2.5, 3, 2.5);
+      }
+
+      // Gold/Cyan Tinted Bubble Canopy
+      const canGrad = ctx.createLinearGradient(0, -6, 26, 6);
+      canGrad.addColorStop(0, '#0284c7');
+      canGrad.addColorStop(0.5, '#38bdf8');
+      canGrad.addColorStop(1, '#0f172a');
+      ctx.fillStyle = canGrad;
+      ctx.beginPath();
+      ctx.ellipse(14, 0, 15, 5.2, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // USAF / VCPD Wing Roundels
+      if (!damaged) {
+        ctx.fillStyle = '#38bdf8';
+        ctx.beginPath();
+        ctx.arc(-18, -26, 4.5, 0, Math.PI * 2);
+        ctx.arc(-18, 26, 4.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      carSprites[key] = c;
+      return c;
+    }
+
+    // ----------------------------------------------------------
+    // SPECIAL SPRITE B: LEONIDA HAULER 18-WHEELER TRUCK
+    // ----------------------------------------------------------
+    if (isTruck) {
+      const w = 96;
+      const h = 34;
+
+      // Ambient shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.65)';
+      ctx.fillRect(-w * 0.5 + 3, -h * 0.5 + 4, w, h);
+
+      // 6 Heavy Dual Axles / Tires
+      ctx.fillStyle = '#090a0d';
+      for (const wx of [-38, -24, 10, 34]) {
+        ctx.fillRect(wx - 5, -h * 0.5 - 2, 10, 4);
+        ctx.fillRect(wx - 5, h * 0.5 - 2, 10, 4);
+      }
+
+      // Corrugated Aluminum Cargo Trailer (Rear section)
+      const trGrad = ctx.createLinearGradient(0, -h * 0.48, 0, h * 0.48);
+      trGrad.addColorStop(0, '#94a3b8');
+      trGrad.addColorStop(0.5, '#f1f5f9');
+      trGrad.addColorStop(1, '#64748b');
+      ctx.fillStyle = damaged ? '#27272a' : trGrad;
+      ctx.fillRect(-48, -16, 64, 32);
+      ctx.strokeStyle = '#0f172a';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(-48, -16, 64, 32);
+
+      // Trailer roof ribs
+      ctx.strokeStyle = 'rgba(15, 23, 42, 0.25)';
+      ctx.lineWidth = 1;
+      for (let rx = -42; rx <= 10; rx += 8) {
+        ctx.beginPath();
+        ctx.moveTo(rx, -15);
+        ctx.lineTo(rx, 15);
+        ctx.stroke();
+      }
+
+      // Heavy Tractor Cab (Front section)
+      ctx.fillStyle = bodyGradFor(ctx, baseCol, 15);
+      ctx.beginPath();
+      ctx.roundRect(16, -15, 30, 30, 4);
+      ctx.fill();
+      ctx.strokeStyle = '#0f172a';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // Chrome Front Bullbar Grille & Dual Vertical Exhaust Stacks
+      ctx.fillStyle = '#e2e8f0';
+      ctx.fillRect(44, -12, 3.5, 24);
+      ctx.fillRect(15, -17, 4, 4);
+      ctx.fillRect(15, 13, 4, 4);
+
+      // Cab Windshield
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(24, -12, 9, 24);
+
+      // Headlights & Taillights
+      ctx.fillStyle = '#fef08a';
+      ctx.fillRect(44, -14, 3, 4);
+      ctx.fillRect(44, 10, 3, 4);
+      ctx.fillStyle = '#ef4444';
+      ctx.fillRect(-48, -14, 3, 5);
+      ctx.fillRect(-48, 9, 3, 5);
+
+      carSprites[key] = c;
+      return c;
+    }
+
+    // ----------------------------------------------------------
+    // SPECIAL SPRITE C: PCJ-600 STREET SUPERBIKE (MOTORCYCLE)
+    // ----------------------------------------------------------
+    if (isBike) {
+      // Shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.55)';
+      ctx.beginPath();
+      ctx.ellipse(1, 3, 21, 7, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Front & Rear Sport Tires
+      ctx.fillStyle = '#090a0d';
+      ctx.fillRect(11, -3, 10, 6);
+      ctx.fillRect(-21, -3.5, 11, 7);
+
+      // Chrome Forks & Handlebars
+      ctx.strokeStyle = '#cbd5e1';
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      ctx.moveTo(8, -9);
+      ctx.lineTo(11, 0);
+      ctx.lineTo(8, 9);
+      ctx.stroke();
+
+      // Aerodynamic Sport Fairing & Fuel Tank
+      ctx.fillStyle = baseCol;
+      ctx.beginPath();
+      ctx.moveTo(16, 0);
+      ctx.quadraticCurveTo(6, -8, -16, -5);
+      ctx.lineTo(-19, 0);
+      ctx.lineTo(-16, 5);
+      ctx.quadraticCurveTo(6, 8, 16, 0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = '#0f172a';
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+
+      // Black Leather Saddle Seat
+      ctx.fillStyle = '#18181b';
+      ctx.beginPath();
+      ctx.ellipse(-6, 0, 7, 4, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Headlight & Rear LED
+      ctx.fillStyle = '#fef08a';
+      ctx.fillRect(13, -2.5, 3, 5);
+      ctx.fillStyle = '#ef4444';
+      ctx.fillRect(-19, -2, 2.5, 4);
+
+      carSprites[key] = c;
+      return c;
+    }
+
+    // ----------------------------------------------------------
+    // SPECIAL SPRITE D: NEON STREET SKATEBOARD
+    // ----------------------------------------------------------
+    if (isSkate) {
+      // Shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.45)';
+      ctx.beginPath();
+      ctx.ellipse(1, 2, 15, 5.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 4 Urethane Neon Wheels
+      ctx.fillStyle = '#39ff14';
+      ctx.fillRect(6, -6.5, 4, 2.5);
+      ctx.fillRect(6, 4, 4, 2.5);
+      ctx.fillRect(-10, -6.5, 4, 2.5);
+      ctx.fillRect(-10, 4, 4, 2.5);
+
+      // Maple Deck with Grip Tape & Neon Graphic Rails
+      ctx.fillStyle = '#18181b';
+      ctx.beginPath();
+      ctx.roundRect(-14, -4.5, 28, 9, 4.5);
+      ctx.fill();
+      ctx.strokeStyle = baseCol;
+      ctx.lineWidth = 1.8;
+      ctx.stroke();
+
+      // Center deck stripe
+      ctx.fillStyle = baseCol;
+      ctx.fillRect(-6, -1.5, 12, 3);
+
+      carSprites[key] = c;
+      return c;
+    }
 
     const isSwat = typeKey === 'swat';
     const isPolice = typeKey === 'police';
@@ -323,13 +592,7 @@ window.SpriteForge = (() => {
     ctx.fill();
 
     // 4. Sculpted Metallic Body Shell with Curved Gradient Shading
-    const baseCol = damaged ? '#27272a' : color;
-    const bodyGrad = ctx.createLinearGradient(0, -h * 0.5, 0, h * 0.5);
-    bodyGrad.addColorStop(0, darkenHex(baseCol, 0.68));
-    bodyGrad.addColorStop(0.22, lightenHex(baseCol, 38));
-    bodyGrad.addColorStop(0.5, baseCol);
-    bodyGrad.addColorStop(0.78, lightenHex(baseCol, 28));
-    bodyGrad.addColorStop(1, darkenHex(baseCol, 0.60));
+    const bodyGrad = bodyGradFor(ctx, baseCol, h * 0.5);
 
     ctx.fillStyle = bodyGrad;
     ctx.beginPath();
