@@ -216,32 +216,35 @@
   const sfx = new SoundEngine();
 
   // ==========================================
-  // 2. WORLD MAP & PROCEDURAL VICE LEONIDA CITY
+  // 2. WORLD MAP & PROCEDURAL VICE LEONIDA METROPOLIS (48x48)
   // ==========================================
   const TILE_SIZE = 160; // Each tile is 160x160 world pixels
-  const GRID_W = 24;
-  const GRID_H = 24;
-  const WORLD_W = GRID_W * TILE_SIZE;
+  const GRID_W = 48;
+  const GRID_H = 48;
+  const WORLD_W = GRID_W * TILE_SIZE; // 7680x7680 world!
   const WORLD_H = GRID_H * TILE_SIZE;
 
   // Tile Types:
-  // 0: Asphalt Road
-  // 1: Building Block
-  // 2: Park / Grass Plaza
-  // 3: Sandy Beach (East Coast)
-  // 4: Ocean Water (Far East)
+  // 0: Asphalt Road / Bridge
+  // 1: Building Lot
+  // 2: Park / Botanical Plaza
+  // 3: Sandy Beach (Ocean Drive Coast)
+  // 4: Water (Ocean & Bayou River Canal)
   // 5: Pay N' Spray Shop
+  // 6: Leonida International Airport Runway / Tarmac
   const worldGrid = [];
   const buildings = [];
   const streetlamps = [];
   const palmTrees = [];
   const payphones = [];
   const pickups = [];
+  const stuntJumps = [];
+  const payNSprayRects = [];
 
-  // Gang Territories:
-  // West (x < 9): Gator Kings (Lime)
-  // Center (9 <= x < 16): Chrome Runners (Cyan)
-  // East/Beach (x >= 16): Flamingo Syndicate (Pink)
+  // Gang Territories across the 48x48 Metropolis:
+  // West (gx < 16): Gator Kings (Bayou & Airport)
+  // Center (16 <= gx < 32): Chrome Runners (Downtown & Tech Financial Core)
+  // East (gx >= 32): Flamingo Syndicate (Ocean Drive & Star Island Resort)
   const GANGS = {
     syndicate: { name: 'FLAMINGO SYNDICATE', color: '#ff2a85', respect: 50 },
     runners:   { name: 'CHROME RUNNERS',     color: '#00f0ff', respect: 50 },
@@ -250,8 +253,8 @@
 
   function getGangForPos(wx, wy) {
     const gx = Math.floor(wx / TILE_SIZE);
-    if (gx >= 15) return 'syndicate';
-    if (gx >= 8) return 'runners';
+    if (gx >= 31) return 'syndicate';
+    if (gx >= 15) return 'runners';
     return 'gators';
   }
 
@@ -259,107 +262,257 @@
     syndicate: [
       { wall: '#23132e', roof: '#341c47', neon: '#ff2a85', sign: 'HOTEL VICE' },
       { wall: '#1b1d36', roof: '#2a2d54', neon: '#00f0ff', sign: 'CLUB MALIBU' },
-      { wall: '#2d162c', roof: '#452043', neon: '#ffe600', sign: 'OCEAN DRIVE' }
+      { wall: '#2d162c', roof: '#452043', neon: '#ffe600', sign: 'OCEAN DRIVE' },
+      { wall: '#1f1638', roof: '#2e2052', neon: '#f43f5e', sign: 'STAR PALACE' },
+      { wall: '#162436', roof: '#21354f', neon: '#38bdf8', sign: 'MARINA YACHT' },
+      { wall: '#2b1222', roof: '#421b34', neon: '#ec4899', sign: 'FLAMINGO VIP' }
     ],
     runners: [
       { wall: '#121b28', roof: '#1d2b40', neon: '#00f0ff', sign: 'CYBER CORP' },
       { wall: '#18202c', roof: '#243042', neon: '#3b82f6', sign: 'LEONIDA BANK' },
-      { wall: '#1c182b', roof: '#2b2442', neon: '#a855f7', sign: 'ARCADE 1999' }
+      { wall: '#1c182b', roof: '#2b2442', neon: '#a855f7', sign: 'ARCADE 1999' },
+      { wall: '#0f172a', roof: '#1e293b', neon: '#22d3ee', sign: 'ARGON TOWER' },
+      { wall: '#1e1b2e', roof: '#2d2846', neon: '#facc15', sign: 'VICE CASINO' },
+      { wall: '#172536', roof: '#213752', neon: '#60a5fa', sign: 'METRO MEDIA' }
     ],
     gators: [
       { wall: '#172219', roof: '#223325', neon: '#39ff14', sign: 'GATOR AUTO' },
       { wall: '#241e18', roof: '#362d24', neon: '#f97316', sign: 'BAYOU BAR' },
-      { wall: '#1c2421', roof: '#283631', neon: '#eab308', sign: 'PAWN SHOP' }
+      { wall: '#1c2421', roof: '#283631', neon: '#eab308', sign: 'PAWN SHOP' },
+      { wall: '#261c18', roof: '#3b2b25', neon: '#ef4444', sign: 'CARGO DOCKS' },
+      { wall: '#1a261e', roof: '#26382c', neon: '#84cc16', sign: 'AIRBOAT CO' },
+      { wall: '#212129', roof: '#32323e', neon: '#fb923c', sign: 'IRON FOUNDRY' }
     ]
   };
 
-  let payNSprayRect = null;
+  // Seeded hash for organic, non-repetitive procedural city layout
+  function cellHash(x, y) {
+    let n = Math.sin(x * 127.1 + y * 311.7) * 43758.5453123;
+    return n - Math.floor(n);
+  }
 
   function initWorld() {
+    // Organic Avenue & Street lines (irregular spacing 2, 3, or 4 tiles apart so blocks vary in size)
+    const roadXSet = new Set([0, 3, 6, 10, 14, 18, 21, 24, 27, 31, 35, 39, 42, 45, 47]);
+    const roadYSet = new Set([0, 3, 7, 10, 14, 18, 21, 24, 27, 31, 35, 38, 42, 45, 47]);
+
     for (let y = 0; y < GRID_H; y++) {
       worldGrid[y] = [];
       for (let x = 0; x < GRID_W; x++) {
-        // East coast Ocean & Beach
-        if (x >= 22) {
-          // Bridges on y = 6, 12, 18? Keep 22-23 as ocean with a pier at y=12
-          worldGrid[y][x] = (y === 12 && x === 22) ? 0 : 4;
+        const isMainBridgeY = (y === 14 || y === 24 || y === 35);
+
+        // 1. Far East Star Island & Ocean Channel (x >= 40)
+        if (x >= 45) {
+          worldGrid[y][x] = (y === 24 && x <= 46) ? 0 : 4; // Deep Atlantic Ocean + Pier
           continue;
         }
-        if (x === 21) {
-          worldGrid[y][x] = (y % 3 === 0) ? 0 : 3;
+        if (x === 43 || x === 44) {
+          // Star Island Resort Strip connected by bridges
+          if (isMainBridgeY || roadYSet.has(y)) {
+            worldGrid[y][x] = 0;
+          } else {
+            worldGrid[y][x] = (y % 4 === 0) ? 2 : 1;
+          }
+          continue;
+        }
+        if (x === 40 || x === 41) {
+          // Intercoastal Waterway separating Mainland from Star Island
+          worldGrid[y][x] = isMainBridgeY ? 0 : 4;
+          continue;
+        }
+        if (x === 38 || x === 39) {
+          // Golden Vice Beach Sand along Ocean Drive
+          worldGrid[y][x] = roadYSet.has(y) ? 0 : 3;
           continue;
         }
 
-        // Major Avenues & Streets every 3rd tile
-        const isRoadX = (x % 3 === 0);
-        const isRoadY = (y % 3 === 0);
+        // 2. Southwest Leonida International Airport & Military Base (x: 2..10, y: 28..42)
+        if (x >= 2 && x <= 9 && y >= 28 && y <= 41) {
+          worldGrid[y][x] = 6; // Wide tarmac & twin runways!
+          continue;
+        }
+
+        // 3. Winding Bayou River Canal in the West (x == 12)
+        if (x === 12) {
+          const isWestBridge = (y === 10 || y === 18 || y === 24 || y === 35 || y === 42);
+          worldGrid[y][x] = isWestBridge ? 0 : 4;
+          continue;
+        }
+
+        // 4. Organic City Road Network
+        let isRoadX = roadXSet.has(x);
+        let isRoadY = roadYSet.has(y);
+
+        // Randomly merge some minor blocks into super-blocks, or split blocks with alleys
+        const h = cellHash(Math.floor(x / 3), Math.floor(y / 3));
+        if (isRoadX && x !== 24 && x !== 18 && x !== 35 && h < 0.16 && !isMainBridgeY) {
+          isRoadX = false;
+        }
+        if (isRoadY && y !== 24 && y !== 14 && y !== 35 && h > 0.84) {
+          isRoadY = false;
+        }
 
         if (isRoadX || isRoadY) {
-          worldGrid[y][x] = 0; // Road
-        } else if (x === 10 && y === 10) {
-          // Central Pay N' Spray garage
+          worldGrid[y][x] = 0;
+        } else if ((x === 22 && y === 22) || (x === 33 && y === 16) || (x === 8 && y === 16)) {
+          // 3 Pay N' Spray Garages (Downtown, Ocean Beach, West Bayou)
           worldGrid[y][x] = 5;
-          payNSprayRect = {
+          payNSprayRects.push({
             x: x * TILE_SIZE + 12,
             y: y * TILE_SIZE + 12,
             w: TILE_SIZE - 24,
             h: TILE_SIZE - 24
-          };
-        } else if ((x === 13 && y === 13) || (x === 4 && y === 10) || (x === 16 && y === 7)) {
-          // Parks / Neon Plazas
+          });
+        } else if (cellHash(x * 3, y * 5) < 0.16) {
+          // Scattered Botanical Parks & Skate Plazas
           worldGrid[y][x] = 2;
         } else {
-          worldGrid[y][x] = 1; // Building
+          worldGrid[y][x] = 1; // Building Lot
         }
       }
     }
 
-    // Create 2.5D Buildings, Streetlamps, Palm Trees, and Payphones
+    // Create Diverse Randomized 2.5D Buildings, Streetlamps, Palm Trees, and Stunt Ramps
     for (let y = 0; y < GRID_H; y++) {
       for (let x = 0; x < GRID_W; x++) {
         const t = worldGrid[y][x];
         const wx = x * TILE_SIZE;
         const wy = y * TILE_SIZE;
+        const h1 = cellHash(x, y);
+        const h2 = cellHash(x + 71, y + 37);
+        const h3 = cellHash(x * 13, y * 29);
 
         if (t === 1) {
           const gang = getGangForPos(wx, wy);
           const palList = BUILDING_PALETTES[gang];
-          const pal = palList[(x * 7 + y * 13) % palList.length];
-          const pad = 16;
-          const height = 42 + ((x * 19 + y * 31) % 55); // 2.5D extrusion height
-          const hasSign = ((x + y) % 2 === 0);
-          buildings.push({
-            x: wx + pad,
-            y: wy + pad,
-            w: TILE_SIZE - pad * 2,
-            h: TILE_SIZE - pad * 2,
-            height,
-            roofStyle: (x * 3 + y * 5) % 3,
-            wallColor: pal.wall,
-            roofColor: pal.roof,
-            neonColor: pal.neon,
-            sign: hasSign ? pal.sign : null,
-            acUnits: [
-              { ox: 18, oy: 18, w: 22, h: 16 },
-              { ox: TILE_SIZE - pad * 2 - 44, oy: TILE_SIZE - pad * 2 - 34, w: 24, h: 20 }
-            ]
-          });
+          const pal = palList[Math.floor(h1 * palList.length)];
+          const pal2 = palList[Math.floor(h2 * palList.length)];
+
+          // Distance from Downtown Core (24, 24) controls skyscraper elevation!
+          const distFromCore = Math.hypot(x - 24, y - 24);
+          const maxTowerH = distFromCore < 9 ? 115 : (x >= 32 ? 85 : 58);
+          const minTowerH = distFromCore < 9 ? 48 : 26;
+
+          // Choose 1 of 5 distinct architectural block layouts so no two blocks look alike!
+          const archRoll = h2;
+
+          if (archRoll < 0.24) {
+            // ARCHETYPE 1: Twin High-Rise Towers with a walkable breezeway alley between them
+            const splitVertical = h3 < 0.5;
+            if (splitVertical) {
+              buildings.push({
+                x: wx + 14, y: wy + 14, w: 56, h: TILE_SIZE - 28,
+                height: minTowerH + Math.floor(h1 * maxTowerH),
+                roofStyle: Math.floor(h1 * 8),
+                wallColor: pal.wall, roofColor: pal.roof, neonColor: pal.neon,
+                sign: h3 < 0.25 ? pal.sign : null
+              });
+              buildings.push({
+                x: wx + 90, y: wy + 18, w: 56, h: TILE_SIZE - 36,
+                height: minTowerH + Math.floor(h3 * maxTowerH * 0.8),
+                roofStyle: Math.floor(h3 * 8),
+                wallColor: pal2.wall, roofColor: pal2.roof, neonColor: pal2.neon,
+                sign: null
+              });
+            } else {
+              buildings.push({
+                x: wx + 14, y: wy + 14, w: TILE_SIZE - 28, h: 56,
+                height: minTowerH + Math.floor(h1 * maxTowerH),
+                roofStyle: Math.floor(h2 * 8),
+                wallColor: pal.wall, roofColor: pal.roof, neonColor: pal.neon,
+                sign: pal.sign
+              });
+              buildings.push({
+                x: wx + 18, y: wy + 90, w: TILE_SIZE - 36, h: 56,
+                height: minTowerH + Math.floor(h3 * maxTowerH * 0.75),
+                roofStyle: Math.floor(h3 * 8),
+                wallColor: pal2.wall, roofColor: pal2.roof, neonColor: pal2.neon,
+                sign: null
+              });
+            }
+          } else if (archRoll < 0.48) {
+            // ARCHETYPE 2: Setback Skyscraper with a Corner Palm Plaza
+            const padX = h3 < 0.5 ? 14 : 38;
+            const padY = h1 < 0.5 ? 14 : 38;
+            buildings.push({
+              x: wx + padX, y: wy + padY, w: TILE_SIZE - 54, h: TILE_SIZE - 54,
+              height: minTowerH + Math.floor(h2 * (maxTowerH + 25)),
+              roofStyle: Math.floor((h1 + h3) * 4) % 8,
+              wallColor: pal.wall, roofColor: pal.roof, neonColor: pal.neon,
+              sign: h1 > 0.35 ? pal.sign : null
+            });
+            // Plant a tropical palm tree in the open corner plaza!
+            palmTrees.push({
+              x: wx + (padX > 20 ? 22 : TILE_SIZE - 22),
+              y: wy + (padY > 20 ? 22 : TILE_SIZE - 22),
+              r: 22
+            });
+          } else if (archRoll < 0.70) {
+            // ARCHETYPE 3: Multi-Unit Commercial Strip (3 smaller shops/bars on one block)
+            buildings.push({
+              x: wx + 14, y: wy + 14, w: 60, h: 60,
+              height: 28 + Math.floor(h1 * 38),
+              roofStyle: Math.floor(h1 * 8),
+              wallColor: pal.wall, roofColor: pal.roof, neonColor: pal.neon,
+              sign: pal.sign
+            });
+            buildings.push({
+              x: wx + 86, y: wy + 14, w: 60, h: 60,
+              height: 24 + Math.floor(h2 * 45),
+              roofStyle: Math.floor(h2 * 8),
+              wallColor: pal2.wall, roofColor: pal2.roof, neonColor: pal2.neon,
+              sign: null
+            });
+            buildings.push({
+              x: wx + 14, y: wy + 86, w: TILE_SIZE - 28, h: 60,
+              height: 32 + Math.floor(h3 * 50),
+              roofStyle: Math.floor(h3 * 8),
+              wallColor: pal.wall, roofColor: pal.roof, neonColor: pal2.neon,
+              sign: h3 > 0.5 ? pal2.sign : null
+            });
+          } else {
+            // ARCHETYPE 4: Grand Landmark Block (Hotel / Casino / Corporate HQ)
+            const margin = 12 + Math.floor(h3 * 14);
+            buildings.push({
+              x: wx + margin, y: wy + margin,
+              w: TILE_SIZE - margin * 2, h: TILE_SIZE - margin * 2,
+              height: minTowerH + Math.floor(h1 * maxTowerH),
+              roofStyle: Math.floor(h1 * 8),
+              wallColor: pal.wall, roofColor: pal.roof, neonColor: pal.neon,
+              sign: h2 > 0.3 ? pal.sign : null
+            });
+          }
 
           // Corner streetlamps on sidewalks
-          streetlamps.push({ x: wx + 8, y: wy + 8, color: pal.neon });
+          if ((x + y) % 2 === 0) {
+            streetlamps.push({ x: wx + 8, y: wy + 8, color: pal.neon });
+          }
         } else if (t === 2 || t === 3) {
-          // Add palm trees on beaches and parks
-          palmTrees.push({ x: wx + 45, y: wy + 45, r: 22 });
-          palmTrees.push({ x: wx + TILE_SIZE - 45, y: wy + TILE_SIZE - 45, r: 24 });
+          // Lush Palm Groves in Parks and along Ocean Drive Beach
+          palmTrees.push({ x: wx + 36 + h1 * 25, y: wy + 36 + h2 * 25, r: 22 });
+          if (h3 > 0.35) {
+            palmTrees.push({ x: wx + TILE_SIZE - 38 - h2 * 20, y: wy + TILE_SIZE - 38 - h1 * 20, r: 24 });
+          }
         }
       }
     }
 
-    // Add GTA 2 Ringing Green Payphones at key intersections
+    // Add Stunt Jump Ramps near bridges and airport!
+    stuntJumps.push(
+      { x: 39 * TILE_SIZE + 80, y: 24 * TILE_SIZE + 80, dir: 0 },
+      { x: 13 * TILE_SIZE + 80, y: 24 * TILE_SIZE + 80, dir: Math.PI },
+      { x: 9 * TILE_SIZE + 80,  y: 35 * TILE_SIZE + 80, dir: 0 },
+      { x: 24 * TILE_SIZE + 80, y: 18 * TILE_SIZE + 80, dir: -Math.PI / 2 }
+    );
+
+    // Add 6 GTA 2 Ringing Green Payphones across all districts of the 48x48 city
     const phoneCoords = [
-      { gx: 12, gy: 12, gang: 'runners', title: 'CHROME DELIVERY', type: 'checkpoint' },
-      { gx: 18, gy: 9,  gang: 'syndicate', title: 'BEACHFRONT HIT', type: 'bounty' },
-      { gx: 6,  gy: 15, gang: 'gators', title: 'BAYOU RAMPAGE', type: 'rampage' }
+      { gx: 24, gy: 24, gang: 'runners',   title: 'CHROME EXPRESS',   type: 'checkpoint' },
+      { gx: 35, gy: 21, gang: 'syndicate', title: 'OCEAN DRIVE HIT',  type: 'bounty' },
+      { gx: 14, gy: 24, gang: 'gators',    title: 'BAYOU RAMPAGE',    type: 'rampage' },
+      { gx: 10, gy: 35, gang: 'gators',    title: 'TARMAC TAKEDOWN',  type: 'bounty' },
+      { gx: 35, gy: 14, gang: 'syndicate', title: 'STAR ISLAND RUN',  type: 'checkpoint' },
+      { gx: 24, gy: 14, gang: 'runners',   title: 'DOWNTOWN PURGE',   type: 'rampage' }
     ];
     for (const pc of phoneCoords) {
       payphones.push({
@@ -372,16 +525,20 @@
       });
     }
 
-    // Spawn Weapon & Health/Armor Crates around the city
+    // Spawn Weapon & Health/Armor Crates across the 48x48 Metropolis
     const pickupSpots = [
-      { gx: 12, gy: 11, kind: 'smg' },
-      { gx: 15, gy: 12, kind: 'shotgun' },
-      { gx: 18, gy: 12, kind: 'rocket' },
-      { gx: 9,  gy: 9,  kind: 'flame' },
-      { gx: 11, gy: 13, kind: 'health' },
-      { gx: 14, gy: 10, kind: 'armor' },
-      { gx: 6,  gy: 12, kind: 'rocket' },
-      { gx: 20, gy: 15, kind: 'health' }
+      { gx: 24, gy: 23, kind: 'smg' },
+      { gx: 27, gy: 24, kind: 'shotgun' },
+      { gx: 35, gy: 24, kind: 'rocket' },
+      { gx: 18, gy: 21, kind: 'flame' },
+      { gx: 23, gy: 25, kind: 'health' },
+      { gx: 26, gy: 21, kind: 'armor' },
+      { gx: 14, gy: 24, kind: 'rocket' },
+      { gx: 38, gy: 24, kind: 'health' },
+      { gx: 8,  gy: 35, kind: 'rocket' },
+      { gx: 43, gy: 24, kind: 'armor' },
+      { gx: 24, gy: 14, kind: 'flame' },
+      { gx: 18, gy: 35, kind: 'shotgun' }
     ];
     for (const ps of pickupSpots) {
       pickups.push({
@@ -410,8 +567,8 @@
   // 4. PLAYER, VEHICLES, PEDS, BULLETS, PARTICLES
   // ==========================================
   const player = {
-    x: 12 * TILE_SIZE + 80,
-    y: 12 * TILE_SIZE + 80,
+    x: 24 * TILE_SIZE + 80,
+    y: 24 * TILE_SIZE + 80,
     vx: 0,
     vy: 0,
     angle: 0,
@@ -692,46 +849,58 @@
     return ped;
   }
 
-  // Initial City Traffic & Pedestrians
+  // Initial City Traffic & Pedestrians across the 48x48 Vice-Leonida Metropolis
   function populateInitialEntities() {
-    // Spawn Showcase Vehicles right around the player's starting intersection (12, 12)
-    // so the player can immediately test the Jet, 18-Wheeler Truck, Motorcycle, Skateboard, and Sports Cars!
-    spawnVehicle('jet',     12 * TILE_SIZE + 80,  11 * TILE_SIZE + 70, -Math.PI / 2, null);
-    spawnVehicle('truck',   11 * TILE_SIZE + 55,  12 * TILE_SIZE + 80, 0, null);
-    spawnVehicle('bike',    12 * TILE_SIZE + 128, 12 * TILE_SIZE + 52, 0, null);
-    spawnVehicle('skate',   12 * TILE_SIZE + 45,  12 * TILE_SIZE + 45, 0, null);
-    spawnVehicle('banshee', 12 * TILE_SIZE + 125, 12 * TILE_SIZE + 115, 0, null);
-    spawnVehicle('stinger', 13 * TILE_SIZE + 40,  12 * TILE_SIZE + 80, 0, null);
+    // 1. Spawn Showcase Vehicles right around the player's Downtown Core starting intersection (24, 24)
+    spawnVehicle('jet',     24 * TILE_SIZE + 80,  23 * TILE_SIZE + 70, -Math.PI / 2, null);
+    spawnVehicle('truck',   23 * TILE_SIZE + 55,  24 * TILE_SIZE + 80, 0, null);
+    spawnVehicle('bike',    24 * TILE_SIZE + 128, 24 * TILE_SIZE + 52, 0, null);
+    spawnVehicle('skate',   24 * TILE_SIZE + 45,  24 * TILE_SIZE + 45, 0, null);
+    spawnVehicle('banshee', 24 * TILE_SIZE + 125, 24 * TILE_SIZE + 115, 0, null);
+    spawnVehicle('stinger', 25 * TILE_SIZE + 40,  24 * TILE_SIZE + 80, 0, null);
 
-    // Spawn extra Hydra Fighter Jets at Helipad / Airport Plazas & Ocean Pier
-    spawnVehicle('jet', 13 * TILE_SIZE + 80, 13 * TILE_SIZE + 80, 0, null);
-    spawnVehicle('jet', 21 * TILE_SIZE + 80, 12 * TILE_SIZE + 80, -Math.PI / 2, null);
-    // Spawn extra Skateboards in parks and on the beach boardwalk
-    spawnVehicle('skate', 16 * TILE_SIZE + 80, 7 * TILE_SIZE + 80, 0, 'civilian');
-    spawnVehicle('skate', 21 * TILE_SIZE + 50, 10 * TILE_SIZE + 80, Math.PI / 2, 'civilian');
-    spawnVehicle('skate', 4 * TILE_SIZE + 80,  10 * TILE_SIZE + 80, 0, null);
+    // 2. Spawn Squadron of Hydra Fighter Jets & Heavy Haulers at Leonida International Airport (x: 2..9, y: 28..41)
+    spawnVehicle('jet',   4 * TILE_SIZE + 80, 31 * TILE_SIZE + 80, Math.PI / 2, null);
+    spawnVehicle('jet',   7 * TILE_SIZE + 80, 31 * TILE_SIZE + 80, Math.PI / 2, null);
+    spawnVehicle('jet',   5 * TILE_SIZE + 80, 38 * TILE_SIZE + 80, -Math.PI / 2, null);
+    spawnVehicle('truck', 3 * TILE_SIZE + 80, 35 * TILE_SIZE + 80, 0, null);
+    spawnVehicle('bike',  6 * TILE_SIZE + 80, 35 * TILE_SIZE + 80, 0, null);
 
-    // Spawn roaming traffic on road tiles (Trucks, Motorcycles, Skateboards, Sports Cars, Cabs)
+    // 3. Spawn extra Hydra Jet & Superbikes at Star Island Resort & Ocean Drive Pier
+    spawnVehicle('jet',   43 * TILE_SIZE + 80, 24 * TILE_SIZE + 80, -Math.PI / 2, null);
+    spawnVehicle('bike',  38 * TILE_SIZE + 80, 24 * TILE_SIZE + 50, Math.PI / 2, null);
+    spawnVehicle('skate', 38 * TILE_SIZE + 50, 21 * TILE_SIZE + 80, Math.PI / 2, 'civilian');
+    spawnVehicle('skate', 38 * TILE_SIZE + 50, 27 * TILE_SIZE + 80, -Math.PI / 2, 'civilian');
+    spawnVehicle('skate', 21 * TILE_SIZE + 80, 21 * TILE_SIZE + 80, 0, null);
+
+    // 4. Spawn 80 roaming traffic vehicles on actual road tiles across the 48x48 grid
     const types = ['banshee', 'stinger', 'muscle', 'cab', 'truck', 'truck', 'bike', 'bike', 'skate'];
-    for (let i = 0; i < 42; i++) {
-      const gx = (Math.floor(Math.random() * 7) * 3);
-      const gy = Math.floor(Math.random() * 20) + 1;
+    let spawnedTraffic = 0;
+    for (let attempts = 0; attempts < 400 && spawnedTraffic < 80; attempts++) {
+      const gx = Math.floor(Math.random() * (GRID_W - 4)) + 2;
+      const gy = Math.floor(Math.random() * (GRID_H - 4)) + 2;
+      if (worldGrid[gy][gx] !== 0) continue;
       const wx = gx * TILE_SIZE + TILE_SIZE * 0.5;
       const wy = gy * TILE_SIZE + TILE_SIZE * 0.5;
-      if (Math.hypot(wx - player.x, wy - player.y) > 260) {
+      if (Math.hypot(wx - player.x, wy - player.y) > 280) {
         const t = types[Math.floor(Math.random() * types.length)];
-        spawnVehicle(t, wx, wy, Math.PI / 2, 'civilian');
+        const ang = (Math.floor(Math.random() * 4)) * (Math.PI / 2);
+        spawnVehicle(t, wx, wy, ang, 'civilian');
+        spawnedTraffic++;
       }
     }
 
-    // Spawn 2 AI Patrol Jets flying across the Vice City skyline!
-    spawnVehicle('jet', 6 * TILE_SIZE, 6 * TILE_SIZE, 0, 'civilian');
-    spawnVehicle('jet', 18 * TILE_SIZE, 18 * TILE_SIZE, Math.PI, 'civilian');
+    // 5. Spawn 4 AI Patrol Fighter Jets soaring across the 48x48 Vice-Leonida skyline!
+    spawnVehicle('jet', 12 * TILE_SIZE, 12 * TILE_SIZE, 0, 'civilian');
+    spawnVehicle('jet', 36 * TILE_SIZE, 14 * TILE_SIZE, Math.PI * 0.5, 'civilian');
+    spawnVehicle('jet', 36 * TILE_SIZE, 36 * TILE_SIZE, Math.PI, 'civilian');
+    spawnVehicle('jet', 14 * TILE_SIZE, 36 * TILE_SIZE, -Math.PI * 0.5, 'civilian');
 
-    // Spawn pedestrians & gang members
-    for (let i = 0; i < 75; i++) {
-      const gx = Math.floor(Math.random() * 20) + 1;
-      const gy = Math.floor(Math.random() * 22) + 1;
+    // 6. Spawn 140 pedestrians & gang members across all districts
+    for (let i = 0; i < 140; i++) {
+      const gx = Math.floor(Math.random() * (GRID_W - 6)) + 2;
+      const gy = Math.floor(Math.random() * (GRID_H - 4)) + 2;
+      if (worldGrid[gy][gx] === 4) continue; // Don't spawn peds in deep water
       const wx = gx * TILE_SIZE + 14;
       const wy = gy * TILE_SIZE + 14;
       const gang = getGangForPos(wx, wy);
@@ -931,7 +1100,7 @@
     }
 
     if (player.health <= 0) {
-      // WASTED! Respawn at Hospital / Plaza
+      // WASTED! Respawn at Downtown Hospital Plaza (24, 24)
       player.health = 100;
       player.armor = 50;
       player.wanted = 0;
@@ -941,8 +1110,8 @@
         player.vehicle.driver = null;
         player.vehicle = null;
       }
-      player.x = 12 * TILE_SIZE + 80;
-      player.y = 12 * TILE_SIZE + 80;
+      player.x = 24 * TILE_SIZE + 80;
+      player.y = 24 * TILE_SIZE + 80;
       activeMission = null;
       showBanner('WASTED! (-$100 MEDICAL BILL)', '#ff1744');
     }
@@ -990,21 +1159,21 @@
       activeMission = {
         type: 'checkpoint',
         gang: phone.gang,
-        title: 'CHROME RUNNER EXPRESS',
-        desc: 'Race through 3 neon checkpoints across Vice City before time runs out!',
-        timer: 50,
+        title: phone.title || 'CHROME RUNNER EXPRESS',
+        desc: 'Race through 3 neon checkpoints across Vice-Leonida before time runs out!',
+        timer: 65,
         checkpoints: [
-          { x: 18 * TILE_SIZE + 80, y: 12 * TILE_SIZE + 80 },
-          { x: 18 * TILE_SIZE + 80, y: 6 * TILE_SIZE + 80 },
-          { x: 9 * TILE_SIZE + 80,  y: 9 * TILE_SIZE + 80 }
+          { x: 31 * TILE_SIZE + 80, y: 24 * TILE_SIZE + 80 },
+          { x: 38 * TILE_SIZE + 80, y: 24 * TILE_SIZE + 80 },
+          { x: 43 * TILE_SIZE + 80, y: 14 * TILE_SIZE + 80 }
         ],
-        reward: 2500
+        reward: 3500
       };
     } else if (phone.type === 'bounty') {
-      const tx = 15 * TILE_SIZE + 80;
-      const ty = 15 * TILE_SIZE + 80;
+      const tx = Math.min(39 * TILE_SIZE, Math.max(8 * TILE_SIZE, phone.x + 4 * TILE_SIZE));
+      const ty = Math.min(39 * TILE_SIZE, Math.max(8 * TILE_SIZE, phone.y + 3 * TILE_SIZE));
       const boss = spawnPed(tx, ty, 'bounty', 'runners');
-      boss.hp = 240;
+      boss.hp = 260;
       boss.radius = 14;
       // Give boss bodyguards
       spawnPed(tx + 28, ty, 'gang', 'runners');
@@ -1012,21 +1181,21 @@
       activeMission = {
         type: 'bounty',
         gang: phone.gang,
-        title: 'SYNDICATE VIP HIT',
-        desc: 'Eliminate the rival Chrome Runner Underboss marked on your GPS!',
-        timer: 65,
+        title: phone.title || 'SYNDICATE VIP HIT',
+        desc: 'Eliminate the rival Underboss & bodyguards marked on your GPS!',
+        timer: 75,
         targetEntity: boss,
-        reward: 3000
+        reward: 4000
       };
     } else {
       activeMission = {
         type: 'rampage',
         gang: phone.gang,
-        title: 'BAYOU CHAOS CONTRACT',
+        title: phone.title || 'BAYOU CHAOS CONTRACT',
         desc: 'Eliminate 10 targets or police officers before the timer expires!',
-        timer: 45,
+        timer: 55,
         killsNeeded: 10,
-        reward: 2000
+        reward: 3000
       };
     }
     showBanner(`CONTRACT: ${activeMission.title}`, '#39ff14');
@@ -1072,22 +1241,42 @@
       }
     }
 
-    // Pay N' Spray Check (Instant respray + clear Wanted + full repair)
-    if (player.vehicle && payNSprayRect) {
+    // Pay N' Spray Check across all 3 Garages (Instant respray + clear Wanted + full repair)
+    if (player.vehicle && payNSprayRects.length > 0) {
       const v = player.vehicle;
-      if (
-        v.x > payNSprayRect.x && v.x < payNSprayRect.x + payNSprayRect.w &&
-        v.y > payNSprayRect.y && v.y < payNSprayRect.y + payNSprayRect.h &&
-        Math.hypot(v.vx, v.vy) < 90
-      ) {
-        if (v.hp < v.maxHp || player.wanted > 0) {
-          v.hp = v.maxHp;
-          player.wanted = 0;
-          const colors = ['#ff2a85', '#00f0ff', '#39ff14', '#ffe600', '#a855f7', '#ffffff'];
-          v.color = colors[Math.floor(Math.random() * colors.length)];
-          sfx.playCash();
-          showBanner('RESPRAYED & REPAIRED! COPS EVADED!', '#39ff14');
-          updateHUD();
+      for (const rect of payNSprayRects) {
+        if (
+          v.x > rect.x && v.x < rect.x + rect.w &&
+          v.y > rect.y && v.y < rect.y + rect.h &&
+          Math.hypot(v.vx, v.vy) < 110
+        ) {
+          if (v.hp < v.maxHp || player.wanted > 0) {
+            v.hp = v.maxHp;
+            player.wanted = 0;
+            const colors = ['#ff2a85', '#00f0ff', '#39ff14', '#ffe600', '#a855f7', '#ffffff'];
+            v.color = colors[Math.floor(Math.random() * colors.length)];
+            sfx.playCash();
+            showBanner('RESPRAYED & REPAIRED! COPS EVADED!', '#39ff14');
+            updateHUD();
+          }
+        }
+      }
+    }
+
+    // Insane Stunt Jump Ramp Check!
+    if (player.vehicle && !player.vehicle.isJet) {
+      const v = player.vehicle;
+      const spd = Math.hypot(v.vx, v.vy);
+      if (spd > 280 && (!v.stuntAirTimer || v.stuntAirTimer <= 0)) {
+        for (const sj of stuntJumps) {
+          if (Math.hypot(v.x - sj.x, v.y - sj.y) < 52) {
+            v.stuntAirTimer = 1.15;
+            v.vx *= 1.28;
+            v.vy *= 1.28;
+            addCash(500, v.x, v.y);
+            showBanner('INSANE STUNT BONUS! +$500', '#00f0ff');
+            break;
+          }
         }
       }
     }
@@ -1377,9 +1566,12 @@
       }
     }
 
-    // GTA 2 Dynamic Zoom Camera (Zooms out smoothly as speed increases!)
+    // GTA 2 Dynamic Zoom Camera (Zooms out smoothly as speed increases; extra wide when flying a Jet!)
     const speed = player.vehicle ? Math.hypot(player.vehicle.vx, player.vehicle.vy) : Math.hypot(player.vx, player.vy);
-    const targetZoom = player.vehicle ? Math.max(0.68, 1.0 - (speed / 720) * 0.30) : 1.06;
+    const isFlyingJet = player.vehicle && player.vehicle.isJet && speed > 220;
+    const targetZoom = player.vehicle
+      ? (isFlyingJet ? 0.56 : Math.max(0.68, 1.0 - (speed / 720) * 0.30))
+      : 1.06;
     camera.zoom += (targetZoom - camera.zoom) * 4.5 * dt;
 
     // Lead camera slightly in direction of velocity
@@ -1394,6 +1586,32 @@
   }
 
   function firePlayerWeapon() {
+    // Special Case: HYDRA VTOL FIGHTER JET fires twin Sidewinder Missiles & Rotary Vulcan Cannon!
+    if (player.vehicle && player.vehicle.isJet) {
+      const v = player.vehicle;
+      player.fireTimer = 0.28;
+      sfx.playShoot('rocket');
+      const cos = Math.cos(v.angle);
+      const sin = Math.sin(v.angle);
+      const sideX = -sin * 28;
+      const sideY = cos * 28;
+
+      for (const sign of [-1, 1]) {
+        bullets.push({
+          x: v.x + cos * 32 + sideX * sign,
+          y: v.y + sin * 32 + sideY * sign,
+          vx: v.vx + cos * 820,
+          vy: v.vy + sin * 820,
+          damage: 160,
+          life: 1.35,
+          color: '#38bdf8',
+          explosive: true,
+          fromPlayer: true
+        });
+      }
+      return;
+    }
+
     // In vehicle, drive-by uses SMG or Pistol
     let w = WEAPONS[player.weaponIdx];
     if (player.vehicle && w.id !== 'pistol' && w.id !== 'smg') {
@@ -1468,73 +1686,85 @@
         const cos = Math.cos(v.angle);
         const sin = Math.sin(v.angle);
 
-        // Check for obstacles ahead (On-Foot Player, Player Car, other Vehicles, or Pedestrians)
-        let obstacleAhead = false;
-        let emergencyBrake = false;
-
-        // 1. Check distance & cone in front of car to Player
-        const toPlayerX = player.x - v.x;
-        const toPlayerY = player.y - v.y;
-        const distToPlayer = Math.hypot(toPlayerX, toPlayerY);
-        if (distToPlayer < 165) {
-          const forwardDot = (toPlayerX * cos + toPlayerY * sin) / (distToPlayer || 1);
-          const lateralDist = Math.abs(-toPlayerX * sin + toPlayerY * cos);
-          // If player is in front of the car or standing right next to the driver's door (hijack range)
-          if ((forwardDot > 0.35 && lateralDist < 48) || (!player.vehicle && distToPlayer < 75)) {
-            obstacleAhead = true;
-            emergencyBrake = true;
-            if (Math.random() < 0.025 && distToPlayer < 120) {
-              sfx.playHorn(false);
-            }
+        if (v.isJet) {
+          // AI Patrol Fighter Jet: Soars high above the city skyline in wide banking turns
+          const jetSpeed = 520;
+          v.vx = cos * jetSpeed;
+          v.vy = sin * jetSpeed;
+          v.angle += 0.22 * dt;
+          if (v.x < 300 || v.x > WORLD_W - 300 || v.y < 300 || v.y > WORLD_H - 300) {
+            const toCenter = Math.atan2(WORLD_H * 0.5 - v.y, WORLD_W * 0.5 - v.x);
+            v.angle += Math.sign(toCenter - v.angle) * 1.4 * dt;
           }
-        }
+        } else {
+          // Check for obstacles ahead (On-Foot Player, Player Car, other Vehicles, or Pedestrians)
+          let obstacleAhead = false;
+          let emergencyBrake = false;
 
-        // 2. Check for other vehicles directly in front of this AI car
-        if (!obstacleAhead) {
-          for (const other of vehicles) {
-            if (other === v) continue;
-            const odx = other.x - v.x;
-            const ody = other.y - v.y;
-            const odist = Math.hypot(odx, ody);
-            if (odist < 130) {
-              const fDot = (odx * cos + ody * sin) / (odist || 1);
-              const lDist = Math.abs(-odx * sin + ody * cos);
-              if (fDot > 0.5 && lDist < 36) {
-                obstacleAhead = true;
-                break;
+          // 1. Check distance & cone in front of car to Player
+          const toPlayerX = player.x - v.x;
+          const toPlayerY = player.y - v.y;
+          const distToPlayer = Math.hypot(toPlayerX, toPlayerY);
+          if (distToPlayer < 165) {
+            const forwardDot = (toPlayerX * cos + toPlayerY * sin) / (distToPlayer || 1);
+            const lateralDist = Math.abs(-toPlayerX * sin + toPlayerY * cos);
+            // If player is in front of the car or standing right next to the driver's door (hijack range)
+            if ((forwardDot > 0.35 && lateralDist < 48) || (!player.vehicle && distToPlayer < 75)) {
+              obstacleAhead = true;
+              emergencyBrake = true;
+              if (Math.random() < 0.025 && distToPlayer < 120) {
+                sfx.playHorn(false);
               }
             }
           }
-        }
 
-        if (obstacleAhead) {
-          // Apply realistic hydraulic brakes + leave short tire marks if braking hard from speed
-          const curSpd = Math.hypot(v.vx, v.vy);
-          const brakeStrength = emergencyBrake ? 8.5 : 5.5;
-          v.vx *= Math.max(0, 1 - brakeStrength * dt);
-          v.vy *= Math.max(0, 1 - brakeStrength * dt);
-          if (curSpd < 12) {
-            v.vx = 0;
-            v.vy = 0;
-          } else if (curSpd > 140 && emergencyBrake) {
-            skidMarks.push({
-              x1: v.x - cos * 16, y1: v.y - sin * 16,
-              x2: v.x - cos * 16 - v.vx * dt, y2: v.y - sin * 16 - v.vy * dt,
-              width: 3.5, alpha: 0.35
-            });
+          // 2. Check for other vehicles directly in front of this AI car
+          if (!obstacleAhead) {
+            for (const other of vehicles) {
+              if (other === v || other.isJet) continue;
+              const odx = other.x - v.x;
+              const ody = other.y - v.y;
+              const odist = Math.hypot(odx, ody);
+              if (odist < 130) {
+                const fDot = (odx * cos + ody * sin) / (odist || 1);
+                const lDist = Math.abs(-odx * sin + ody * cos);
+                if (fDot > 0.5 && lDist < 36) {
+                  obstacleAhead = true;
+                  break;
+                }
+              }
+            }
           }
-        } else {
-          const cruiseSpeed = 210;
-          v.vx += (cos * cruiseSpeed - v.vx) * 2.5 * dt;
-          v.vy += (sin * cruiseSpeed - v.vy) * 2.5 * dt;
 
-          // Turn at intersections or if road ends ahead
-          const lookX = v.x + cos * 68;
-          const lookY = v.y + sin * 68;
-          const gx = Math.floor(lookX / TILE_SIZE);
-          const gy = Math.floor(lookY / TILE_SIZE);
-          if (gx < 0 || gx >= GRID_W || gy < 0 || gy >= GRID_H || worldGrid[gy][gx] !== 0) {
-            v.angle += Math.PI * 0.5;
+          if (obstacleAhead) {
+            // Apply realistic hydraulic brakes + leave short tire marks if braking hard from speed
+            const curSpd = Math.hypot(v.vx, v.vy);
+            const brakeStrength = emergencyBrake ? 8.5 : 5.5;
+            v.vx *= Math.max(0, 1 - brakeStrength * dt);
+            v.vy *= Math.max(0, 1 - brakeStrength * dt);
+            if (curSpd < 12) {
+              v.vx = 0;
+              v.vy = 0;
+            } else if (curSpd > 140 && emergencyBrake && !v.isSkate) {
+              skidMarks.push({
+                x1: v.x - cos * 16, y1: v.y - sin * 16,
+                x2: v.x - cos * 16 - v.vx * dt, y2: v.y - sin * 16 - v.vy * dt,
+                width: 3.5, alpha: 0.35
+              });
+            }
+          } else {
+            const cruiseSpeed = v.isSkate ? 145 : (v.isBike ? 280 : (v.isTruck ? 180 : 210));
+            v.vx += (cos * cruiseSpeed - v.vx) * 2.5 * dt;
+            v.vy += (sin * cruiseSpeed - v.vy) * 2.5 * dt;
+
+            // Turn at intersections or if road ends ahead
+            const lookX = v.x + cos * 68;
+            const lookY = v.y + sin * 68;
+            const gx = Math.floor(lookX / TILE_SIZE);
+            const gy = Math.floor(lookY / TILE_SIZE);
+            if (gx < 0 || gx >= GRID_W || gy < 0 || gy >= GRID_H || worldGrid[gy][gx] !== 0) {
+              v.angle += Math.PI * 0.5;
+            }
           }
         }
       } else if (v.driver === 'police' && v.hp > 0) {
@@ -1585,56 +1815,89 @@
       v.x += v.vx * dt;
       v.y += v.vy * dt;
 
-      resolveBuildingCollisions(v, Math.max(v.w, v.h) * 0.42, true);
+      if (v.stuntAirTimer && v.stuntAirTimer > 0) {
+        v.stuntAirTimer = Math.max(0, v.stuntAirTimer - dt);
+      }
 
-      // Realistic Mass & Impulse Vehicle-to-Vehicle Collisions
-      for (let j = i - 1; j >= 0; j--) {
-        const v2 = vehicles[j];
-        const dx = v2.x - v.x;
-        const dy = v2.y - v.y;
-        const dist = Math.hypot(dx, dy);
-        const minDist = (v.w + v2.w) * 0.39;
-        if (dist < minDist && dist > 0.01) {
-          const nx = dx / dist;
-          const ny = dy / dist;
-          const overlap = minDist - dist;
+      const vSpeed = Math.hypot(v.vx, v.vy);
+      v.isAirborne = (v.isJet && (v.driver === 'civilian' || vSpeed > 180)) || (v.stuntAirTimer > 0);
 
-          const m1 = v.isSwat ? 2.4 : (v.typeKey === 'muscle' ? 1.4 : 1.0);
-          const m2 = v2.isSwat ? 2.4 : (v2.typeKey === 'muscle' ? 1.4 : 1.0);
-          const totalM = m1 + m2;
+      // Jet Afterburner Flame Particles
+      if (v.isJet && v.driver && vSpeed > 80) {
+        const cos = Math.cos(v.angle);
+        const sin = Math.sin(v.angle);
+        particles.push({
+          x: v.x - cos * 48 + (Math.random() - 0.5) * 8,
+          y: v.y - sin * 48 + (Math.random() - 0.5) * 8,
+          vx: -cos * 180 + (Math.random() - 0.5) * 30,
+          vy: -sin * 180 + (Math.random() - 0.5) * 30,
+          r: 4 + Math.random() * 5,
+          color: Math.random() < 0.5 ? '#38bdf8' : '#fef08a',
+          life: 0.18,
+          maxLife: 0.18
+        });
+      }
 
-          v.x -= nx * overlap * (m2 / totalM);
-          v.y -= ny * overlap * (m2 / totalM);
-          v2.x += nx * overlap * (m1 / totalM);
-          v2.y += ny * overlap * (m1 / totalM);
+      // Airborne Fighter Jets & Stunt Jumping Cars soar right over buildings and ground traffic!
+      if (!v.isAirborne) {
+        resolveBuildingCollisions(v, Math.max(v.w, v.h) * 0.40, true);
+      } else {
+        // Keep airborne vehicle within world bounds
+        v.x = Math.max(80, Math.min(WORLD_W - 80, v.x));
+        v.y = Math.max(80, Math.min(WORLD_H - 80, v.y));
+      }
 
-          const rvx = v2.vx - v.vx;
-          const rvy = v2.vy - v.vy;
-          const velAlongNormal = rvx * nx + rvy * ny;
+      // Realistic Mass & Impulse Vehicle-to-Vehicle Collisions (skip if either vehicle is airborne)
+      if (!v.isAirborne) {
+        for (let j = i - 1; j >= 0; j--) {
+          const v2 = vehicles[j];
+          if (v2.isAirborne) continue;
+          const dx = v2.x - v.x;
+          const dy = v2.y - v.y;
+          const dist = Math.hypot(dx, dy);
+          const minDist = (v.w + v2.w) * 0.38;
+          if (dist < minDist && dist > 0.01) {
+            const nx = dx / dist;
+            const ny = dy / dist;
+            const overlap = minDist - dist;
 
-          if (velAlongNormal < 0) {
-            const restitution = 0.45;
-            const impulse = -(1 + restitution) * velAlongNormal / (1 / m1 + 1 / m2);
-            const ix = impulse * nx;
-            const iy = impulse * ny;
+            const m1 = v.mass || 1.0;
+            const m2 = v2.mass || 1.0;
+            const totalM = m1 + m2;
 
-            v.vx -= ix / m1;
-            v.vy -= iy / m1;
-            v2.vx += ix / m2;
-            v2.vy += iy / m2;
+            v.x -= nx * overlap * (m2 / totalM);
+            v.y -= ny * overlap * (m2 / totalM);
+            v2.x += nx * overlap * (m1 / totalM);
+            v2.y += ny * overlap * (m1 / totalM);
 
-            // Add realistic angular spin impulse on off-center impacts
-            const impactSpeed = Math.abs(velAlongNormal);
-            if (impactSpeed > 90) {
-              v.angularVel = (v.angularVel || 0) + (Math.random() - 0.5) * (impactSpeed / 120);
-              v2.angularVel = (v2.angularVel || 0) - (Math.random() - 0.5) * (impactSpeed / 120);
-            }
-            if (impactSpeed > 150) {
-              spawnSparks((v.x + v2.x) * 0.5, (v.y + v2.y) * 0.5, 8);
-              v.hp -= impactSpeed * 0.045;
-              v2.hp -= impactSpeed * 0.045;
-              if (v === player.vehicle || v2 === player.vehicle) {
-                camera.shake = Math.min(16, camera.shake + impactSpeed * 0.025);
+            const rvx = v2.vx - v.vx;
+            const rvy = v2.vy - v.vy;
+            const velAlongNormal = rvx * nx + rvy * ny;
+
+            if (velAlongNormal < 0) {
+              const restitution = 0.45;
+              const impulse = -(1 + restitution) * velAlongNormal / (1 / m1 + 1 / m2);
+              const ix = impulse * nx;
+              const iy = impulse * ny;
+
+              v.vx -= ix / m1;
+              v.vy -= iy / m1;
+              v2.vx += ix / m2;
+              v2.vy += iy / m2;
+
+              // Add realistic angular spin impulse on off-center impacts
+              const impactSpeed = Math.abs(velAlongNormal);
+              if (impactSpeed > 90) {
+                v.angularVel = (v.angularVel || 0) + (Math.random() - 0.5) * (impactSpeed / (110 * m1));
+                v2.angularVel = (v2.angularVel || 0) - (Math.random() - 0.5) * (impactSpeed / (110 * m2));
+              }
+              if (impactSpeed > 150) {
+                spawnSparks((v.x + v2.x) * 0.5, (v.y + v2.y) * 0.5, 8);
+                v.hp -= (impactSpeed * 0.045) / Math.sqrt(m1);
+                v2.hp -= (impactSpeed * 0.045) / Math.sqrt(m2);
+                if (v === player.vehicle || v2 === player.vehicle) {
+                  camera.shake = Math.min(16, camera.shake + impactSpeed * 0.025);
+                }
               }
             }
           }
@@ -1642,8 +1905,7 @@
       }
 
       // Vehicle Roadkill / Running over Peds (with solid momentum transfer)
-      const vSpeed = Math.hypot(v.vx, v.vy);
-      if (vSpeed > 40) {
+      if (!v.isAirborne && vSpeed > 40) {
         for (let k = peds.length - 1; k >= 0; k--) {
           const p = peds[k];
           const pdx = p.x - v.x;
@@ -1765,8 +2027,8 @@
       resolveBuildingCollisions(p, p.radius, false);
     }
 
-    // Keep city populated with pedestrians
-    if (peds.length < 65 && Math.random() < 0.08) {
+    // Keep 48x48 city populated with pedestrians
+    if (peds.length < 130 && Math.random() < 0.12) {
       const ang = Math.random() * Math.PI * 2;
       const sx = Math.max(100, Math.min(WORLD_W - 100, player.x + Math.cos(ang) * 650));
       const sy = Math.max(100, Math.min(WORLD_H - 100, player.y + Math.sin(ang) * 650));
@@ -1881,7 +2143,7 @@
     const minGY = Math.max(0, Math.floor((camera.y - halfH) / TILE_SIZE));
     const maxGY = Math.min(GRID_H - 1, Math.floor((camera.y + halfH) / TILE_SIZE));
 
-    // 1. Draw Ground Tiles (Textured Asphalt, Concrete Sidewalks, Beach Sand, Ocean, Pay N' Spray)
+    // 1. Draw Ground Tiles (Textured Asphalt, Concrete Sidewalks, Beach Sand, Ocean, Pay N' Spray, Airport Runway)
     const sf = window.SpriteForge;
     for (let gy = minGY; gy <= maxGY; gy++) {
       for (let gx = minGX; gx <= maxGX; gx++) {
@@ -1893,11 +2155,16 @@
           // Textured Weathered Asphalt Road
           ctx.drawImage(sf.textures.asphalt, wx, wy, TILE_SIZE, TILE_SIZE);
 
-          // Road Markings: Double yellow centerline, dashed lanes, manhole covers, crosswalks
-          const isRoadX = (gx % 3 === 0);
-          const isRoadY = (gy % 3 === 0);
+          // Organic Road Markings: inspect neighbor road tiles to determine orientation & intersections!
+          const hasN = gy > 0 && worldGrid[gy - 1][gx] === 0;
+          const hasS = gy < GRID_H - 1 && worldGrid[gy + 1][gx] === 0;
+          const hasW = gx > 0 && worldGrid[gy][gx - 1] === 0;
+          const hasE = gx < GRID_W - 1 && worldGrid[gy][gx + 1] === 0;
+          const isRoadX = hasN || hasS;
+          const isRoadY = hasW || hasE;
+
           if (isRoadX && !isRoadY) {
-            // Double yellow center divider
+            // Double yellow center divider (Vertical Avenue)
             ctx.fillStyle = 'rgba(234, 179, 8, 0.78)';
             ctx.fillRect(wx + TILE_SIZE * 0.5 - 4, wy, 2.5, TILE_SIZE);
             ctx.fillRect(wx + TILE_SIZE * 0.5 + 1.5, wy, 2.5, TILE_SIZE);
@@ -1908,6 +2175,7 @@
               ctx.fillRect(wx + TILE_SIZE * 0.75, wy + d, 2, 18);
             }
           } else if (isRoadY && !isRoadX) {
+            // Double yellow center divider (Horizontal Street / Bridge)
             ctx.fillStyle = 'rgba(234, 179, 8, 0.78)';
             ctx.fillRect(wx, wy + TILE_SIZE * 0.5 - 4, TILE_SIZE, 2.5);
             ctx.fillRect(wx, wy + TILE_SIZE * 0.5 + 1.5, TILE_SIZE, 2.5);
@@ -1945,7 +2213,7 @@
           // Textured Rippled Beach Sand
           ctx.drawImage(sf.textures.sand, wx, wy, TILE_SIZE, TILE_SIZE);
         } else if (t === 4) {
-          // Animated Ocean Water with Surf Foam along Beach Edge
+          // Animated Ocean & Bayou Water with Surf Foam along Coastline
           const oceanGrad = ctx.createLinearGradient(wx, wy, wx + TILE_SIZE, wy);
           oceanGrad.addColorStop(0, '#0284c7');
           oceanGrad.addColorStop(0.35, '#0369a1');
@@ -1954,7 +2222,7 @@
           ctx.fillRect(wx, wy, TILE_SIZE, TILE_SIZE);
 
           const waveOffset = Math.sin(performance.now() * 0.0028 + gy * 0.9) * 10;
-          if (gx === 22) {
+          if (gx === 40 || gx === 45) {
             // White foamy surf breaking onto the sand
             ctx.fillStyle = 'rgba(240, 249, 255, 0.55)';
             ctx.fillRect(wx + Math.max(0, waveOffset), wy, 10, TILE_SIZE);
@@ -1977,8 +2245,59 @@
           ctx.fillStyle = '#e2e8f0';
           ctx.font = 'bold 10px monospace';
           ctx.fillText('DRIVE IN: REPAIR & EVADE', wx + TILE_SIZE * 0.5, wy + TILE_SIZE * 0.5 + 12);
+        } else if (t === 6) {
+          // Leonida International Airport Runway & Tarmac
+          ctx.drawImage(sf.textures.asphalt, wx, wy, TILE_SIZE, TILE_SIZE);
+          ctx.strokeStyle = 'rgba(148, 163, 184, 0.16)';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(wx, wy, TILE_SIZE, TILE_SIZE);
+
+          if (gx === 4 || gx === 7) {
+            // Twin Main Runways (North-South) with heavy white centerline & threshold bars
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.78)';
+            ctx.fillRect(wx + TILE_SIZE * 0.5 - 4, wy + 24, 8, TILE_SIZE - 48);
+            if (gy === 29 || gy === 40) {
+              // Runway threshold piano keys
+              for (let k = 16; k < TILE_SIZE - 16; k += 18) {
+                ctx.fillRect(wx + k, wy + 12, 10, 42);
+              }
+            }
+            // Runway edge strobes (green/amber)
+            ctx.fillStyle = '#38bdf8';
+            ctx.fillRect(wx + 6, wy + 40, 4, 4);
+            ctx.fillRect(wx + TILE_SIZE - 10, wy + 40, 4, 4);
+            ctx.fillRect(wx + 6, wy + 120, 4, 4);
+            ctx.fillRect(wx + TILE_SIZE - 10, wy + 120, 4, 4);
+          } else if (gy === 35) {
+            // Yellow Taxiway Line
+            ctx.fillStyle = 'rgba(250, 204, 21, 0.72)';
+            ctx.fillRect(wx, wy + TILE_SIZE * 0.5 - 2, TILE_SIZE, 4);
+          }
         }
       }
+    }
+
+    // 1B. Draw Insane Stunt Jump Ramps
+    for (const sj of stuntJumps) {
+      ctx.save();
+      ctx.translate(sj.x, sj.y);
+      ctx.rotate(sj.dir);
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(-26, -22, 52, 44);
+      ctx.strokeStyle = '#facc15';
+      ctx.lineWidth = 2.5;
+      ctx.strokeRect(-26, -22, 52, 44);
+      // Glowing cyan/yellow launch chevrons
+      ctx.fillStyle = '#00f0ff';
+      for (let ox = -16; ox <= 12; ox += 14) {
+        ctx.beginPath();
+        ctx.moveTo(ox, -14);
+        ctx.lineTo(ox + 10, 0);
+        ctx.lineTo(ox, 14);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.restore();
     }
 
     // 2. Draw Tire Skidmarks & Explosion Scorch Marks
@@ -2076,10 +2395,10 @@
       drawPlayerOnFoot();
     }
 
-    // 5. Draw High-Detail Pre-Rendered Vehicles + Headlights & Sirens
+    // 5. Draw Ground Vehicles (Airborne Jets are drawn above 2.5D Rooftops!)
     const lightsOn = TIME_MODES[timeMode].lightsOn;
     for (const v of vehicles) {
-      drawVehicle(v, lightsOn);
+      if (!v.isAirborne) drawVehicle(v, lightsOn);
     }
 
     // 6. Draw Bullets (with Tracer Trails) & Particles
@@ -2108,6 +2427,11 @@
 
     // 7. Draw 2.5D Perspective Extruded Buildings with Illuminated Windows & Textured Rooftops
     drawBuildings25D(minGX, maxGX, minGY, maxGY, lightsOn);
+
+    // 7B. Draw Airborne Fighter Jets soaring ABOVE the 2.5D skyscrapers!
+    for (const v of vehicles) {
+      if (v.isAirborne) drawVehicle(v, lightsOn);
+    }
 
     // 8. Draw Lush Tropical Palm Trees & Streetlamp Glow Halos
     for (const tree of palmTrees) {
@@ -2196,28 +2520,50 @@
     ctx.translate(v.x, v.y);
     ctx.rotate(v.angle);
 
-    // Dual Realistic Headlight Cones & Rear Red Brake Glow
-    if (lightsOn && v.hp > 0) {
+    // If Airborne Fighter Jet: draw offset ground shadow and scale up jet body slightly
+    if (v.isAirborne) {
+      ctx.save();
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.38)';
+      ctx.beginPath();
+      ctx.ellipse(-28, 34, 36, 22, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      ctx.scale(1.16, 1.16);
+    }
+
+    // Dual Realistic Headlight Cones & Rear Red Brake Glow (skip on skateboards)
+    if (lightsOn && v.hp > 0 && !v.isSkate) {
       const grad = ctx.createLinearGradient(v.w * 0.4, 0, v.w * 0.4 + 220, 0);
       grad.addColorStop(0, 'rgba(254, 249, 195, 0.38)');
       grad.addColorStop(0.5, 'rgba(254, 249, 195, 0.14)');
       grad.addColorStop(1, 'rgba(254, 249, 195, 0)');
       ctx.fillStyle = grad;
 
-      // Left & Right headlight beams
-      ctx.beginPath();
-      ctx.moveTo(v.w * 0.44, -v.h * 0.42);
-      ctx.lineTo(v.w * 0.44 + 220, -v.h * 1.85);
-      ctx.lineTo(v.w * 0.44 + 220, -v.h * 0.05);
-      ctx.closePath();
-      ctx.fill();
+      if (v.isBike) {
+        // Single central motorcycle high-beam cone
+        ctx.beginPath();
+        ctx.moveTo(v.w * 0.42, -3);
+        ctx.lineTo(v.w * 0.42 + 190, -34);
+        ctx.lineTo(v.w * 0.42 + 190, 34);
+        ctx.lineTo(v.w * 0.42, 3);
+        ctx.closePath();
+        ctx.fill();
+      } else {
+        // Left & Right headlight beams
+        ctx.beginPath();
+        ctx.moveTo(v.w * 0.44, -v.h * 0.42);
+        ctx.lineTo(v.w * 0.44 + 220, -v.h * 1.85);
+        ctx.lineTo(v.w * 0.44 + 220, -v.h * 0.05);
+        ctx.closePath();
+        ctx.fill();
 
-      ctx.beginPath();
-      ctx.moveTo(v.w * 0.44, v.h * 0.42);
-      ctx.lineTo(v.w * 0.44 + 220, v.h * 0.05);
-      ctx.lineTo(v.w * 0.44 + 220, v.h * 1.85);
-      ctx.closePath();
-      ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(v.w * 0.44, v.h * 0.42);
+        ctx.lineTo(v.w * 0.44 + 220, v.h * 0.05);
+        ctx.lineTo(v.w * 0.44 + 220, v.h * 1.85);
+        ctx.closePath();
+        ctx.fill();
+      }
 
       // Rear red taillight road reflection
       const tailGrad = ctx.createRadialGradient(-v.w * 0.52, 0, 2, -v.w * 0.52, 0, 28);
@@ -2229,13 +2575,19 @@
       ctx.fill();
     }
 
-    // Draw pre-rendered high-detail car sprite
-    ctx.drawImage(sprite, -42, -24);
+    // Draw pre-rendered high-detail vehicle sprite centered on its canvas dimensions
+    ctx.drawImage(sprite, -sprite.width * 0.5, -sprite.height * 0.5);
+
+    // If Motorcycle or Skateboard has a rider, draw the rider on top of the saddle / deck!
+    if (v.exposedRider && v.driver) {
+      const riderColor = v.driver === 'player' ? '#ff2a85' : '#00f0ff';
+      const riderSprite = sf.getCharacterSprite(riderColor, '#f5d0b5', 0, v.driver === 'player');
+      ctx.drawImage(riderSprite, -24, -22);
+    }
 
     // Police Dynamic Red/Blue Strobe Lightbar & Ground Halo
     if (v.isPolice && v.sirenOn && v.hp > 0) {
       const isRed = Math.sin(v.sirenPhase) > 0;
-      const strobeCol = isRed ? '#ff1744' : '#2979ff';
       const sGrad = ctx.createRadialGradient(0, isRed ? -6 : 6, 2, 0, isRed ? -6 : 6, 56);
       sGrad.addColorStop(0, isRed ? 'rgba(255, 23, 68, 0.65)' : 'rgba(41, 121, 255, 0.65)');
       sGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
@@ -2452,9 +2804,11 @@
       for (let x = 0; x < GRID_W; x++) {
         const t = worldGrid[y][x];
         if (t === 1) mctx.fillStyle = '#262f45';
+        else if (t === 2) mctx.fillStyle = '#15803d';
         else if (t === 3) mctx.fillStyle = '#b89458';
         else if (t === 4) mctx.fillStyle = '#073b5c';
         else if (t === 5) mctx.fillStyle = '#39ff14';
+        else if (t === 6) mctx.fillStyle = '#475569';
         else continue;
         mctx.fillRect(x * TILE_SIZE * scaleX, y * TILE_SIZE * scaleY, TILE_SIZE * scaleX, TILE_SIZE * scaleY);
       }
@@ -2464,6 +2818,12 @@
     mctx.fillStyle = '#39ff14';
     for (const ph of payphones) {
       mctx.fillRect(ph.x * scaleX - 2.5, ph.y * scaleY - 2.5, 5, 5);
+    }
+
+    // Stunt Jumps (Cyan blips)
+    mctx.fillStyle = '#00f0ff';
+    for (const sj of stuntJumps) {
+      mctx.fillRect(sj.x * scaleX - 2, sj.y * scaleY - 2, 4, 4);
     }
 
     // Active Mission Blip

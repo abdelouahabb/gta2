@@ -24,9 +24,12 @@
     - **Chrome Runner Express**: High-speed neon checkpoint street race across Leonida.
     - **Syndicate VIP Hit**: Eliminate a heavily armed rival Underboss and his bodyguards.
     - **Bayou Chaos Contract**: Rampage elimination challenge against rival targets and VCPD officers.
-- **6 Vehicle Classes, Pay N' Spray & 6-Star Police Response**:
-  - Drive and hijack the **Vice Banshee GT**, **Infernus Turbo**, **Sabre Muscle**, **Kaufman Cab**, **VCPD Interceptor**, and **Leonida SWAT Van**.
-  - Visit the central **Pay N' Spray** garage to respray your car, repair engine damage, and clear your Wanted level.
+- **10 Vehicle Classes (Including Fighter Jets, 18-Wheeler Trucks, Motorcycles & Skateboards)**:
+  - **Hydra VTOL Fighter Jet**: Takes off and soars **above** the 2.5D skyscrapers once airborne, complete with twin afterburner flame trails and dual under-wing Sidewinder missiles (`Left Click`).
+  - **Hauler 18-Wheeler Truck**: Massive `3.8x` mass corrugated cargo rig with chrome bullbar and dual vertical exhaust stacks that plows through lighter traffic.
+  - **PCJ-600 Superbike**: High-acceleration street motorcycle with exposed rider sprite, single high-beam cone, and agile lane-splitting.
+  - **Neon Street Skateboard**: Ultra-nimble deck with glowing urethane wheels found in parks, boardwalks, and streets.
+  - Plus **Vice Banshee GT**, **Infernus Turbo**, **Sabre Muscle**, **Kaufman Cab**, **VCPD Interceptor**, and **Leonida SWAT Van**, with a central **Pay N' Spray** garage to respray, repair, and clear your 6-Star Wanted level.
 - **5 Weapons & Web Audio Synthesizer Radio**:
   - **9mm Pistol**, **Viper Micro-SMG** (supports drive-by shooting from vehicles!), **Combat Shotgun**, **RPG Launcher** (chain-reaction explosions), and **Flamethrower**.
   - Built-in Web Audio API synthesizer generating gunshots, explosions, police sirens, and 3 procedural synthwave/bass radio stations (`R` key).

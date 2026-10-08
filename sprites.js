@@ -139,14 +139,27 @@ window.SpriteForge = (() => {
     sdctx.putImageData(sdImg, 0, 0);
     textures.sand = sdC;
 
-    // 1E. Architectural Rooftop Textures (3 styles: Gravel Tar, Art Deco Tile, Industrial Helipad)
-    textures.roofs = [0, 1, 2].map((styleIdx) => {
+    // 1E. Architectural Rooftop Textures (8 distinct styles to eliminate repetition!)
+    // 0: Gravel Tar + Twin HVAC & Skylight
+    // 1: Luxury Hotel Rooftop Swimming Pool & Sun Loungers
+    // 2: Corporate Helipad ('H' Landing Pad)
+    // 3: Urban Rooftop Basketball Half-Court
+    // 4: High-Tech Solar Panel Array & Transformer Bank
+    // 5: Botanical Penthouse Garden Terrace
+    // 6: Spanish Red Terracotta Tile Roof
+    // 7: Neon Nightclub Glass Pyramid & Lounge Deck
+    textures.roofs = [0, 1, 2, 3, 4, 5, 6, 7].map((styleIdx) => {
       const rc = createCanvas(128, 128);
       const ctx = rc.getContext('2d');
       const baseColors = [
-        [36, 40, 50], // Dark tar gravel
-        [52, 36, 56], // Vice Art Deco plum/slate
-        [32, 46, 52]  // Industrial steel deck
+        [36, 40, 50], // 0: Dark tar gravel
+        [62, 54, 68], // 1: Luxury stone deck
+        [32, 46, 52], // 2: Industrial steel deck
+        [45, 52, 62], // 3: Asphalt court base
+        [28, 36, 48], // 4: Tech slate roof
+        [48, 44, 38], // 5: Garden timber/stone
+        [124, 45, 32],// 6: Terracotta clay tile
+        [24, 18, 38]  // 7: Nightclub dark obsidian
       ][styleIdx];
 
       const rImg = ctx.createImageData(128, 128);
@@ -164,38 +177,119 @@ window.SpriteForge = (() => {
       ctx.lineWidth = 10;
       ctx.strokeRect(5, 5, 118, 118);
 
-      ctx.strokeStyle = '#6c7587';
+      ctx.strokeStyle = styleIdx === 6 ? '#9a3412' : '#6c7587';
       ctx.lineWidth = 6;
       ctx.strokeRect(3, 3, 122, 122);
       ctx.strokeStyle = '#8e98ab';
       ctx.lineWidth = 1.5;
       ctx.strokeRect(1, 1, 126, 126);
 
-      // Detailed Rooftop Skylights, HVAC Fans, & Solar/Vent Pipes
       if (styleIdx === 0) {
-        // Twin Industrial HVAC Units with rotary fan blades
+        // Twin Industrial HVAC Units + Skylight
         drawHVACUnit(ctx, 18, 18, 34, 28);
         drawHVACUnit(ctx, 18, 52, 34, 28);
-        // Glass Skylight
         drawSkylight(ctx, 68, 22, 40, 68);
       } else if (styleIdx === 1) {
-        // Art Deco Rooftop Lounge Pool / Skylight
-        drawSkylight(ctx, 20, 20, 52, 52);
-        drawHVACUnit(ctx, 80, 22, 28, 28);
-        drawHVACUnit(ctx, 80, 76, 28, 28);
-      } else {
-        // Helipad 'H' Marking + HVAC
-        ctx.strokeStyle = 'rgba(234, 179, 8, 0.75)';
+        // Luxury Vice Hotel Swimming Pool with glowing cyan water & white sun loungers
+        ctx.fillStyle = '#e2e8f0';
+        ctx.fillRect(16, 16, 72, 96);
+        const poolGrad = ctx.createLinearGradient(20, 20, 84, 108);
+        poolGrad.addColorStop(0, '#00f0ff');
+        poolGrad.addColorStop(0.5, '#0ea5e9');
+        poolGrad.addColorStop(1, '#0284c7');
+        ctx.fillStyle = poolGrad;
+        ctx.fillRect(20, 20, 64, 88);
+        // Pool lane lines
+        ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(41, 24); ctx.lineTo(41, 104);
+        ctx.moveTo(63, 24); ctx.lineTo(63, 104);
+        ctx.stroke();
+        // Sun loungers on pool deck
+        ctx.fillStyle = '#f43f5e';
+        for (let ly = 24; ly <= 88; ly += 20) {
+          ctx.fillRect(94, ly, 14, 10);
+        }
+      } else if (styleIdx === 2) {
+        // Corporate Helipad 'H' Marking + HVAC
+        ctx.strokeStyle = 'rgba(234, 179, 8, 0.85)';
         ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.arc(64, 64, 36, 0, Math.PI * 2);
+        ctx.arc(64, 64, 38, 0, Math.PI * 2);
         ctx.stroke();
-        ctx.fillStyle = 'rgba(234, 179, 8, 0.75)';
+        ctx.fillStyle = 'rgba(234, 179, 8, 0.85)';
         ctx.font = 'bold 34px sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText('H', 64, 65);
         drawHVACUnit(ctx, 14, 14, 24, 22);
+      } else if (styleIdx === 3) {
+        // Rooftop Basketball Court
+        ctx.fillStyle = '#1e3a8a';
+        ctx.fillRect(16, 16, 96, 96);
+        ctx.fillStyle = '#ea580c';
+        ctx.fillRect(22, 22, 84, 84);
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.8;
+        ctx.strokeRect(22, 22, 84, 84);
+        ctx.beginPath();
+        ctx.arc(64, 64, 14, 0, Math.PI * 2);
+        ctx.moveTo(22, 64); ctx.lineTo(106, 64);
+        ctx.stroke();
+      } else if (styleIdx === 4) {
+        // Solar Panel Banks
+        for (let py = 18; py <= 78; py += 28) {
+          for (let px = 16; px <= 76; px += 32) {
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(px + 2, py + 2, 26, 20);
+            ctx.fillStyle = '#1d4ed8';
+            ctx.fillRect(px, py, 26, 20);
+            ctx.strokeStyle = '#93c5fd';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(px, py, 26, 20);
+          }
+        }
+        drawHVACUnit(ctx, 84, 82, 26, 26);
+      } else if (styleIdx === 5) {
+        // Botanical Penthouse Garden with lush lawn beds & skylight
+        ctx.fillStyle = '#15803d';
+        ctx.fillRect(18, 18, 42, 42);
+        ctx.fillRect(68, 68, 42, 42);
+        ctx.fillStyle = '#22c55e';
+        ctx.beginPath();
+        ctx.arc(39, 39, 12, 0, Math.PI * 2);
+        ctx.arc(89, 89, 12, 0, Math.PI * 2);
+        ctx.fill();
+        drawSkylight(ctx, 68, 18, 42, 42);
+        drawHVACUnit(ctx, 18, 70, 36, 36);
+      } else if (styleIdx === 6) {
+        // Spanish Red Terracotta Tile Ridges
+        ctx.strokeStyle = 'rgba(69, 10, 10, 0.55)';
+        ctx.lineWidth = 2;
+        for (let y = 14; y < 114; y += 8) {
+          ctx.beginPath();
+          ctx.moveTo(14, y);
+          ctx.lineTo(114, y);
+          ctx.stroke();
+        }
+        drawSkylight(ctx, 42, 42, 44, 44);
+      } else {
+        // Neon Nightclub Glass Pyramid & VIP Deck
+        ctx.strokeStyle = '#ff2a85';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(18, 18, 92, 92);
+        const pyrGrad = ctx.createRadialGradient(64, 64, 4, 64, 64, 36);
+        pyrGrad.addColorStop(0, '#ff2a85');
+        pyrGrad.addColorStop(0.5, '#7e22ce');
+        pyrGrad.addColorStop(1, '#090d16');
+        ctx.fillStyle = pyrGrad;
+        ctx.fillRect(28, 28, 72, 72);
+        ctx.strokeStyle = '#00f0ff';
+        ctx.beginPath();
+        ctx.moveTo(28, 28); ctx.lineTo(100, 100);
+        ctx.moveTo(100, 28); ctx.lineTo(28, 100);
+        ctx.stroke();
       }
 
       return rc;
