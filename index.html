@@ -3,19 +3,43 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>GTA VI: VICE OVERHEAD (1999 / 2026 Edition)</title>
+  <meta name="theme-color" content="#070a14" />
+  <meta name="description" content="GTA VI: Leonida Carbon (2027 Hyper-Edition) — Zero-dependency HTML5 Canvas + Web Audio 2.5D open-world sandbox across an 80×80 State of Leonida with 16 vehicles, colossal 747-8 airliner, destructible buildings, interactive weather, and 10 multi-track MIDI soundtracks." />
+  <meta property="og:title" content="GTA VI: LEONIDA CARBON // 2027 EDITION" />
+  <meta property="og:description" content="Play directly in your browser: 12,800×12,800 State of Leonida, 7 districts, 16 land/sea/air vehicles, permanent battlefield destruction, and 10 original MIDI radio & pursuit tracks." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://abdelouahabb.github.io/gta2/" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="GTA VI: LEONIDA CARBON // 2027 EDITION" />
+  <meta name="twitter:description" content="Zero-dependency HTML5 Canvas + Web Audio open-world action game set in 2027 Leonida." />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23070a14'/%3E%3Crect x='3' y='3' width='58' height='58' rx='11' fill='none' stroke='%2300f0ff' stroke-width='3'/%3E%3Ctext x='32' y='41' text-anchor='middle' font-family='sans-serif' font-weight='900' font-size='26' fill='%23ff2a85'%3EVI%3C/text%3E%3C/svg%3E" />
+  <title>GTA VI: LEONIDA CARBON // 2027 EDITION</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <canvas id="gameCanvas"></canvas>
 
-  <!-- Retro CRT / Scanline & Vignette Overlay -->
+  <!-- Retro-Futuristic 2027 Chromatic Vignette & Bullet-Time FX Overlay -->
   <div id="crt-overlay"></div>
+  <div id="reflex-overlay" class="hidden"></div>
 
-  <!-- Top-Left: Gang Respect Meters & Payphone Mission Info -->
+  <!-- Top-Left: Carbon Engine Telemetry, Gang Respect & Payphone Dispatch -->
   <div id="hud-left">
+    <div class="telemetry-panel">
+      <div class="telemetry-top">
+        <span class="carbon-tag">CARBON 2027 ENGINE</span>
+        <span id="fps-badge" class="fps-badge">60 FPS</span>
+      </div>
+      <div id="district-readout" class="district-readout">📍 DOWNTOWN VICE CORE</div>
+      <div class="telemetry-sub">
+        <span id="weather-readout">☀️ CLEAR SKY</span>
+        <span>•</span>
+        <span id="time-phase-readout">🌅 08:45 MORNING</span>
+      </div>
+    </div>
+
     <div class="respect-panel">
-      <div class="panel-header">RESPECT-O-METER</div>
+      <div class="panel-header">SYNDICATE RESPECT-O-METER</div>
       <div class="respect-row">
         <span class="gang-label neon-pink">FLAMINGO SYNDICATE</span>
         <div class="respect-bar-bg">
@@ -38,13 +62,13 @@
 
     <div id="mission-box" class="mission-panel">
       <div class="mission-header">PAYPHONE DISPATCH</div>
-      <div id="mission-title" class="mission-title">FREE ROAM</div>
-      <div id="mission-desc" class="mission-desc">Find a ringing green payphone to start a contract, or cause chaos in Vice City!</div>
+      <div id="mission-title" class="mission-title">FREE ROAM // LEONIDA</div>
+      <div id="mission-desc" class="mission-desc">Press [V] for Orbital Vehicle Drop, [G] for Satellite Map &amp; Fast-Travel, or answer ringing green payphones!</div>
       <div id="mission-timer" class="mission-timer hidden">00:00</div>
     </div>
   </div>
 
-  <!-- Top-Center: Wanted Cop Heads & Arcade Announcer -->
+  <!-- Top-Center: Wanted Stars, District Entry Title & Action Banners -->
   <div id="hud-center">
     <div id="wanted-container">
       <div class="cop-star" data-level="1">★</div>
@@ -54,16 +78,18 @@
       <div class="cop-star" data-level="5">★</div>
       <div class="cop-star" data-level="6">★</div>
     </div>
-    <div id="banner-message" class="banner-message">WELCOME TO LEONIDA</div>
-    <div id="radio-banner" class="radio-banner hidden">📻 V-ROCK SYNTH FM</div>
+    <div id="pursuit-warning" class="pursuit-warning hidden">🚨 VCPD PURSUIT ACTIVE — PATROL UNITS EN ROUTE</div>
+    <div id="district-banner" class="district-banner hidden">DOWNTOWN VICE METROPOLIS</div>
+    <div id="banner-message" class="banner-message">WELCOME TO LEONIDA 2027</div>
+    <div id="radio-banner" class="radio-banner hidden">📻 VICE SYNTH 104.9 FM</div>
   </div>
 
-  <!-- Top-Right: Cash, Multiplier, Health, Armor, Weapon -->
+  <!-- Top-Right: Cash, Multiplier, Vitals + Reflex Energy, 7-Slot Arsenal -->
   <div id="hud-right">
     <div class="score-panel">
-      <div id="cash-display" class="cash-text">$00000500</div>
+      <div id="cash-display" class="cash-text">$00002500</div>
       <div class="mult-row">
-        <span id="multiplier-badge" class="mult-badge">x1</span>
+        <span id="multiplier-badge" class="mult-badge">x1 COMBO</span>
         <span id="vehicle-name-hud" class="vehicle-badge">ON FOOT</span>
       </div>
     </div>
@@ -79,40 +105,167 @@
       <div class="vital-item">
         <span class="vital-icon shield">⛨</span>
         <div class="vital-bar-bg">
-          <div id="armor-bar" class="vital-bar-fill fill-armor" style="width: 50%;"></div>
+          <div id="armor-bar" class="vital-bar-fill fill-armor" style="width: 75%;"></div>
         </div>
-        <span id="armor-val" class="vital-num">50</span>
+        <span id="armor-val" class="vital-num">75</span>
+      </div>
+      <div class="vital-item" title="Carbon Reflex Bullet-Time [X]">
+        <span class="vital-icon reflex">⚡</span>
+        <div class="vital-bar-bg">
+          <div id="reflex-bar" class="vital-bar-fill fill-reflex" style="width: 100%;"></div>
+        </div>
+        <span id="reflex-val" class="vital-num">100</span>
       </div>
     </div>
 
     <div class="weapon-panel" id="weapon-panel">
-      <div class="weapon-header">WEAPON [1-5 / TAB]</div>
-      <div id="weapon-name" class="weapon-name">9MM PISTOL</div>
-      <div id="weapon-ammo" class="weapon-ammo">∞</div>
-      <div id="midi-track-hud" style="margin-top:6px; font-size:10px; color:#00f0ff; letter-spacing:0.5px;">📻 VICE SYNTH 104.9 FM (MIDI)</div>
+      <div class="weapon-header">ARSENAL [1-7 / WHEEL]</div>
+      <div class="weapon-row-main">
+        <div id="weapon-name" class="weapon-name">9MM PISTOL</div>
+        <div id="weapon-ammo" class="weapon-ammo">∞</div>
+      </div>
+      <div id="weapon-lethality" class="weapon-lethality">TIER I • LIGHT BALLISTIC (GLASS)</div>
+      <div id="weapon-slots" class="weapon-slots">
+        <span data-slot="0" class="w-slot active">1</span>
+        <span data-slot="1" class="w-slot">2</span>
+        <span data-slot="2" class="w-slot">3</span>
+        <span data-slot="3" class="w-slot">4</span>
+        <span data-slot="4" class="w-slot">5</span>
+        <span data-slot="5" class="w-slot">6</span>
+        <span data-slot="6" class="w-slot">7</span>
+      </div>
+      <div id="midi-track-hud" class="midi-hud-line">📻 VICE SYNTH 104.9 FM (MIDI)</div>
+    </div>
+
+    <!-- Quick Action Bar -->
+    <div class="quick-actions">
+      <button id="btn-droppod" class="hud-btn" type="button">[V] DROP-POD</button>
+      <button id="btn-megamap" class="hud-btn" type="button">[G] SAT-MAP</button>
+      <button id="btn-weather" class="hud-btn" type="button">[B] WEATHER</button>
+      <button id="btn-time" class="hud-btn" type="button">[T] TIME</button>
     </div>
   </div>
 
-  <!-- Bottom-Left: Minimap & Controls Toggle -->
+  <!-- Bottom-Center: Digital Speedometer, Nitrous Bar & Chassis Integrity -->
+  <div id="speedo-hud" class="speedo-hud hidden">
+    <div class="speedo-main">
+      <span id="speedo-val" class="speedo-val">000</span>
+      <span id="speedo-unit" class="speedo-unit">MPH</span>
+    </div>
+    <div class="speedo-bars">
+      <div class="speedo-bar-row">
+        <span>NITRO [SHIFT]</span>
+        <div class="mini-bar-bg"><div id="nitro-bar" class="mini-bar-fill fill-nitro" style="width:100%"></div></div>
+      </div>
+      <div class="speedo-bar-row">
+        <span>CHASSIS HP</span>
+        <div class="mini-bar-bg"><div id="veh-hp-bar" class="mini-bar-fill fill-vhp" style="width:100%"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom-Left: High-Res Interactive Radar Minimap -->
   <div id="hud-bottom-left">
-    <div class="minimap-frame">
-      <canvas id="minimapCanvas" width="180" height="180"></canvas>
-      <div class="minimap-label">LEONIDA GPS // <span id="time-display">21:00</span></div>
+    <div class="minimap-frame" id="minimap-trigger" title="Click or press [G] for Full-Screen Satellite Megamap">
+      <canvas id="minimapCanvas" width="204" height="204"></canvas>
+      <div class="minimap-label">LEONIDA SAT-GPS [G] // <span id="time-display">08:45</span></div>
     </div>
   </div>
 
   <!-- Bottom-Right: Controls Quick Card -->
   <div id="hud-bottom-right">
     <div class="controls-card" id="controls-card">
-      <div class="controls-title">CONTROLS [H to Toggle]</div>
-      <div><span>WASD / ZQSD / Arrows</span> Move / Drive</div>
-      <div><span>SPACE</span> Handbrake / Drift</div>
-      <div><span>F / ENTER</span> Hijack / Exit Car</div>
-      <div><span>L-CLICK</span> Fire Weapon</div>
-      <div><span>1-5 / TAB / Wheel</span> Switch Weapon</div>
-      <div><span>E</span> Horn / Police Siren</div>
-      <div><span>R / M</span> Next MIDI Track / Mute</div>
-      <div><span>T</span> Toggle Time (Dusk/Night/Noon)</div>
+      <div class="controls-title">CARBON 2027 CONTROLS [H]</div>
+      <div><span>WASD / ZQSD / Arrows</span> Move / Swim / Fly</div>
+      <div><span>SPACE (Hold) or [L]</span> Land Heli / Car Brake</div>
+      <div><span>F / ENTER</span> Enter / Park Heli / Parachute</div>
+      <div><span>L-CLICK / CTRL / K</span> Aircraft Missiles / Fire</div>
+      <div><span>1-7 / C / Wheel</span> Lethal Weapons (Destroys!)</div>
+      <div><span>E / X</span> Horn &amp; Siren / Bullet-Time</div>
+      <div><span>V / G</span> Drop-Pod (747/Heli/Jet) / Map</div>
+      <div><span>R / M / B / T</span> 10 Radios / Weather / Time</div>
+    </div>
+  </div>
+
+  <!-- ORBITAL VEHICLE DROP-POD MODAL [V] -->
+  <div id="droppod-modal" class="modal-backdrop hidden">
+    <div class="cyber-modal">
+      <div class="modal-header">
+        <span>🛰️ CARBON ORBITAL VEHICLE DROP-POD</span>
+        <button id="close-droppod" class="modal-close" type="button">✕ [ESC]</button>
+      </div>
+      <div class="modal-sub">Select any prototype vehicle to air-drop directly to your coordinates:</div>
+      <div class="droppod-grid" id="droppod-grid">
+        <button class="pod-card" data-veh="airliner" type="button">
+          <div class="pod-title">LEONIDA 747-8 JUMBO</div>
+          <div class="pod-tag">AGM MISSILES [CLICK/CTRL] • 5-STAR CRASH IMPACT</div>
+        </button>
+        <button class="pod-card" data-veh="falcon" type="button">
+          <div class="pod-title">FALCON GUNSHIP HELI</div>
+          <div class="pod-tag">LAND [SPACE/L] • ROCKETS [CLICK/CTRL] • PARK [F]</div>
+        </button>
+        <button class="pod-card" data-veh="jet" type="button">
+          <div class="pod-title">HYDRA VTOL JET</div>
+          <div class="pod-tag">TWIN AGM MISSILES [CLICK/CTRL] • PARACHUTE [F]</div>
+        </button>
+        <button class="pod-card" data-veh="tank" type="button">
+          <div class="pod-title">RHINO M1A3 TANK</div>
+          <div class="pod-tag">HEAVY ARMOR • SURGICAL BUILDING DEMOLITION</div>
+        </button>
+        <button class="pod-card" data-veh="hyper" type="button">
+          <div class="pod-title">CARBON X-2027</div>
+          <div class="pod-tag">PROTOTYPE HYPERCAR • PLASMA NITRO</div>
+        </button>
+        <button class="pod-card" data-veh="boat" type="button">
+          <div class="pod-title">VIPER SPEEDBOAT</div>
+          <div class="pod-tag">TWIN-V8 MARINE INTERCEPTOR</div>
+        </button>
+        <button class="pod-card" data-veh="bike" type="button">
+          <div class="pod-title">PCJ-600 SUPERBIKE</div>
+          <div class="pod-tag">NIMBLE STREET SPORTBIKE</div>
+        </button>
+        <button class="pod-card" data-veh="truck" type="button">
+          <div class="pod-title">HAULER 18-WHEELER</div>
+          <div class="pod-tag">HEAVY HIGHWAY FREIGHT RIG</div>
+        </button>
+        <button class="pod-card" data-veh="stinger" type="button">
+          <div class="pod-title">INFERNUS TURBO</div>
+          <div class="pod-tag">VICE EXOTIC SUPERCAR</div>
+        </button>
+        <button class="pod-card" data-veh="skate" type="button">
+          <div class="pod-title">NEON SKATEBOARD</div>
+          <div class="pod-tag">ELECTRIC CARBON STREET DECK</div>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- FULL-SCREEN SATELLITE MEGAMAP & FAST-TRAVEL MODAL [G] -->
+  <div id="megamap-modal" class="modal-backdrop hidden">
+    <div class="cyber-modal megamap-box">
+      <div class="modal-header">
+        <span>🗺️ STATE OF LEONIDA — 80×80 SATELLITE MEGAMAP (12,800 × 12,800 PX)</span>
+        <button id="close-megamap" class="modal-close" type="button">✕ [ESC]</button>
+      </div>
+      <div class="modal-sub">LEFT-CLICK anywhere on the map to <b>ORBITAL FAST-TRAVEL</b> immediately • RIGHT-CLICK to set GPS Waypoint!</div>
+      <div class="megamap-wrap">
+        <canvas id="megamapCanvas" width="600" height="600"></canvas>
+        <div class="megamap-legend">
+          <div class="legend-title">MEGA-DISTRICTS</div>
+          <button class="tp-btn" data-tp="40,40" type="button">🏙️ Downtown Vice Metropolis</button>
+          <button class="tp-btn" data-tp="60,40" type="button">🏖️ Ocean Drive &amp; Vice Beach</button>
+          <button class="tp-btn" data-tp="70,40" type="button">🏝️ Star Island Billionaire Keys</button>
+          <button class="tp-btn" data-tp="12,56" type="button">✈️ Leonida Intl Spaceport &amp; Airbase</button>
+          <button class="tp-btn" data-tp="14,24" type="button">🐊 Everglades Bayou &amp; Swamps</button>
+          <button class="tp-btn" data-tp="29,64" type="button">🏗️ Port Leonida Cargo Docks</button>
+          <button class="tp-btn" data-tp="40,14" type="button">🧬 Silicon Hills Tech Corridor</button>
+          <hr class="legend-sep" />
+          <div class="legend-key"><span class="dot dot-white"></span> You</div>
+          <div class="legend-key"><span class="dot dot-green"></span> Payphone / Pay N' Spray</div>
+          <div class="legend-key"><span class="dot dot-cyan"></span> Stunt Ramp / Sky-Rail</div>
+          <div class="legend-key"><span class="dot dot-pink"></span> Custom GPS Waypoint</div>
+        </div>
+      </div>
     </div>
   </div>
 

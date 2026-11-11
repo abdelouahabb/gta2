@@ -13,7 +13,7 @@
       this.delayFeedback = null;
       this.isMuted = false;
 
-      // Radio Stations & Dynamic Action Tracks backed by real .mid files in ./music/
+      // 10 Multi-Track Radio Stations & Dynamic Pursuit Soundtracks backed by real .mid files in ./music/
       this.tracks = [
         {
           id: 'synthwave',
@@ -23,10 +23,31 @@
           role: 'radio'
         },
         {
+          id: 'havana',
+          file: 'music/havana_caliente_fm.mid',
+          name: '📻 SOL CALIENTE 95.7 FM',
+          subtitle: 'CUBAN SALSA MAMBO & BRASS (MIDI)',
+          role: 'radio'
+        },
+        {
           id: 'bass',
           file: 'music/leonida_bass_fm.mid',
           name: '📻 LEONIDA BASS 98.3 FM',
           subtitle: 'MIAMI 808 G-FUNK & SUB BASS (MIDI)',
+          role: 'radio'
+        },
+        {
+          id: 'sunset',
+          file: 'music/sunset_lounge_fm.mid',
+          name: '📻 OCEAN BREEZE 92.1 FM',
+          subtitle: 'BALEARIC SUNSET NYLON & RHODES (MIDI)',
+          role: 'radio'
+        },
+        {
+          id: 'disco',
+          file: 'music/starlight_disco_fm.mid',
+          name: '📻 STAR ISLAND 106.3 FM',
+          subtitle: 'FRENCH-TOUCH NU-DISCO FUNK (MIDI)',
           role: 'radio'
         },
         {
@@ -47,7 +68,14 @@
           id: 'chase',
           file: 'music/action_chase_heat.mid',
           name: '🚨 VCPD PURSUIT HEAT',
-          subtitle: 'HIGH-OCTANE ACTION CHASE (MIDI)',
+          subtitle: 'TACTICAL BREAKBEAT CHASE (MIDI)',
+          role: 'action'
+        },
+        {
+          id: 'swat',
+          file: 'music/swat_lockdown_chase.mid',
+          name: '☣️ FEDERAL SWAT OVERDRIVE',
+          subtitle: '4-6★ DOUBLE-TIME LOCKDOWN (MIDI)',
           role: 'action'
         },
         {
@@ -304,13 +332,16 @@
 
       if (station && station.id === 'off') {
         targetTrackId = null;
+      } else if (Math.floor(wantedLevel) >= 4 && !this.manualTrackOverride) {
+        // High-alert 4-6★ SWAT/Military Pursuit automatically kicks in intense 162 BPM Lockdown score!
+        targetTrackId = 'swat';
       } else if (inVehicle) {
-        // Inside any vehicle: play the selected Radio Station (or Chase track if Wanted >= 3 and not overridden)
         targetTrackId = station ? station.id : 'synthwave';
       } else {
-        // On foot: if Wanted >= 1 or in an active contract mission, play high-octane Action Chase MIDI!
-        // Otherwise play the user's R-selected track if they cycled tracks, or the Vice Noir Street Groove!
-        if (Math.floor(wantedLevel) >= 1 || isMissionActive) {
+        // On foot: Wanted 1-3★ plays Pursuit Heat, Wanted 4+ plays SWAT Overdrive, otherwise Street Groove!
+        if (Math.floor(wantedLevel) >= 4) {
+          targetTrackId = 'swat';
+        } else if (Math.floor(wantedLevel) >= 1 || isMissionActive) {
           targetTrackId = 'chase';
         } else if (this.manualTrackOverride && station) {
           targetTrackId = station.id;
@@ -382,13 +413,40 @@
 
       if (prog >= 32 && prog <= 39) {
         // Bass Guitar / Analog Synth Bass / 808 Sub Bass
-        osc1.type = prog === 39 ? 'triangle' : 'sawtooth';
+        osc1.type = prog === 39 || prog === 32 ? 'triangle' : 'sawtooth';
         osc2.type = 'square';
         osc2.detune.value = -6;
         filter.type = 'lowpass';
         filter.frequency.setValueAtTime(prog === 39 ? 420 : 1150, now);
         filter.frequency.exponentialRampToValueAtTime(160, now + Math.min(0.28, durSec));
         filter.Q.value = 3.5;
+      } else if (prog >= 0 && prog <= 3) {
+        // Cuban Montuno Bright Acoustic Piano
+        osc1.type = 'triangle';
+        osc2.type = 'sawtooth';
+        osc2.detune.value = 5;
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(3800, now);
+        filter.frequency.exponentialRampToValueAtTime(850, now + Math.min(0.35, durSec));
+        sendToDelay = true;
+      } else if (prog >= 24 && prog <= 28) {
+        // Balearic Nylon Pluck (24) & Clean Nile Funk Guitar (27)
+        osc1.type = prog === 24 ? 'triangle' : 'sawtooth';
+        osc2.type = 'sine';
+        osc2.detune.value = 7;
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(prog === 24 ? 2600 : 3400, now);
+        filter.frequency.exponentialRampToValueAtTime(620, now + Math.min(0.24, durSec));
+        filter.Q.value = 2.2;
+        sendToDelay = true;
+      } else if (prog >= 48 && prog <= 51) {
+        // Lush Disco / Sunset String Ensemble
+        osc1.type = 'sawtooth';
+        osc2.type = 'sawtooth';
+        osc2.detune.value = 16;
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(2200, now);
+        sendToDelay = true;
       } else if (prog === 29 || prog === 30) {
         // Overdriven Rock / Shred Guitar
         osc1.type = 'sawtooth';
@@ -398,16 +456,16 @@
         filter.frequency.setValueAtTime(1450, now);
         filter.Q.value = 1.8;
         sendToDelay = true;
-      } else if (prog === 4 || prog === 5 || prog === 11) {
-        // Rhodes Electric Piano / Vibraphone Bell
+      } else if (prog === 4 || prog === 5 || prog === 11 || prog === 12) {
+        // Rhodes Electric Piano / Vibraphone / Tropical Marimba (12)
         osc1.type = 'sine';
         osc2.type = 'triangle';
-        osc2.frequency.setValueAtTime(freq * 2, now); // Bell harmonic
+        osc2.frequency.setValueAtTime(freq * (prog === 12 ? 4 : 2), now);
         filter.type = 'lowpass';
         filter.frequency.setValueAtTime(2800, now);
         sendToDelay = true;
       } else if (prog === 55 || prog === 62) {
-        // Synth Brass / Orchestra Hit Stabs
+        // Synth Brass / Salsa Trumpet / Orchestra Hit Stabs
         osc1.type = 'sawtooth';
         osc2.type = 'sawtooth';
         osc2.detune.value = 18;
@@ -429,7 +487,7 @@
       }
 
       osc1.frequency.setValueAtTime(freq, now);
-      if (prog !== 4 && prog !== 5 && prog !== 11) {
+      if (prog !== 4 && prog !== 5 && prog !== 11 && prog !== 12) {
         osc2.frequency.setValueAtTime(freq, now);
       }
 
@@ -513,19 +571,36 @@
         gain.connect(this.masterGain);
         noise.start(now);
         noise.stop(now + dur);
-      } else if (note === 45) {
-        // Electronic Synth Tom Fill
+      } else if (note === 45 || note === 62 || note === 63) {
+        // Electronic Synth Tom Fill (45) & Afro-Cuban Conga Slap/Open (62, 63)
         const osc = this.ctx.createOscillator();
         const gain = this.ctx.createGain();
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(160, now);
-        osc.frequency.exponentialRampToValueAtTime(65, now + 0.16);
-        gain.gain.setValueAtTime(normVel * 0.36, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.17);
+        osc.type = note === 45 ? 'triangle' : 'sine';
+        const startF = note === 62 ? 310 : (note === 63 ? 225 : 160);
+        const endF   = note === 62 ? 185 : (note === 63 ? 155 : 65);
+        osc.frequency.setValueAtTime(startF, now);
+        osc.frequency.exponentialRampToValueAtTime(endF, now + 0.14);
+        gain.gain.setValueAtTime(normVel * 0.34, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
         osc.connect(gain);
         gain.connect(this.masterGain);
         osc.start(now);
-        osc.stop(now + 0.18);
+        osc.stop(now + 0.17);
+      } else if (note === 56) {
+        // Metallic Latin Mambo Cowbell (Dual Square Bandpass)
+        const o1 = this.ctx.createOscillator();
+        const o2 = this.ctx.createOscillator();
+        const bp = this.ctx.createBiquadFilter();
+        const gain = this.ctx.createGain();
+        o1.type = 'square'; o2.type = 'square';
+        o1.frequency.setValueAtTime(540, now);
+        o2.frequency.setValueAtTime(800, now);
+        bp.type = 'bandpass'; bp.frequency.value = 700; bp.Q.value = 3.2;
+        gain.gain.setValueAtTime(normVel * 0.22, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.11);
+        o1.connect(bp); o2.connect(bp); bp.connect(gain); gain.connect(this.masterGain);
+        o1.start(now); o2.start(now);
+        o1.stop(now + 0.12); o2.stop(now + 0.12);
       }
     }
 
