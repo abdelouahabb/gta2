@@ -15,6 +15,8 @@
   const mctx = minimapCanvas.getContext('2d');
   const megamapCanvas = document.getElementById('megamapCanvas');
   const megaCtx = megamapCanvas ? megamapCanvas.getContext('2d') : null;
+  const newsCamCanvas = document.getElementById('newsCamCanvas');
+  const newsCtx = newsCamCanvas ? newsCamCanvas.getContext('2d') : null;
 
   function resize() {
     canvas.width = window.innerWidth;
@@ -547,6 +549,12 @@
   const payphones = [];
   const pickups = [];
   const stuntJumps = [];
+  const gasStations = [];     // Explosive RON-99 Hyper-Octane Fuel Stations (domino pump chain-reactions!)
+  const powerNodes = [];      // High-Voltage Grid Substations (destruction triggers rolling district blackouts!)
+  const waterPredators = [];  // Everglades Alligators & Atlantic Great White Sharks
+  const tsunamiWaves = [];    // Expanding tidal surge rings from aircraft/explosive water impacts
+  const waterJets = [];       // Pressurized Firetruck Hydro-Cannon streams (extinguishes fires & blasts cars!)
+  const swatRopes = [];       // 4★+ Helicopter SWAT Tactical Fast-Rope Rappelling Lines
   const payNSprayRects = [];
   const baseMapCanvas = document.createElement('canvas');
   baseMapCanvas.width = 400;
@@ -1106,6 +1114,53 @@
       { x: 28 * TILE_SIZE + 80, y: 60 * TILE_SIZE + 80, dir: -Math.PI / 2 }
     );
 
+    // 7 Explosive RON-99 HYPER-OCTANE Gas Stations across all Major Districts (Domino Chain-Reactions!)
+    const gasCoords = [
+      { gx: 42, gy: 40, dx: 0,   dy: -54, name: 'DOWNTOWN OCTANE' },
+      { gx: 57, gy: 42, dx: -52, dy: 0,   name: 'OCEAN DRIVE FUEL' },
+      { gx: 31, gy: 40, dx: 0,   dy: 54,  name: 'MIDTOWN PETRO' },
+      { gx: 40, gy: 21, dx: 54,  dy: 0,   name: 'SILICON HYPER-FUEL' },
+      { gx: 29, gy: 57, dx: -54, dy: 0,   name: 'PORT DOCKS DIESEL' },
+      { gx: 23, gy: 39, dx: 52,  dy: 0,   name: 'BAYOU OUTPOST GAS' },
+      { gx: 20, gy: 56, dx: 0,   dy: -54, name: 'SPACEPORT AVGAS' }
+    ];
+    for (const gc of gasCoords) {
+      const cx = gc.gx * TILE_SIZE + 80 + gc.dx;
+      const cy = gc.gy * TILE_SIZE + 80 + gc.dy;
+      gasStations.push({
+        x: cx,
+        y: cy,
+        name: gc.name,
+        exploded: false,
+        pumps: [
+          { x: cx - 22, y: cy, hp: 65, leaking: false, fuseTimer: 0, exploded: false },
+          { x: cx + 22, y: cy, hp: 65, leaking: false, fuseTimer: 0, exploded: false }
+        ]
+      });
+    }
+
+    // 5 Destructible High-Voltage Grid Substations (Triggers Rolling District Power Blackouts!)
+    const powerCoords = [
+      { gx: 37, gy: 38, name: 'DOWNTOWN GRID-A1', radius: 1750 },
+      { gx: 55, gy: 38, name: 'OCEAN DRIVE SUB-2', radius: 1650 },
+      { gx: 39, gy: 17, name: 'SILICON HILLS HV-3', radius: 1650 },
+      { gx: 27, gy: 61, name: 'PORT LEONIDA SUB-4', radius: 1650 },
+      { gx: 67, gy: 41, name: 'STAR ISLAND GRID-5', radius: 1550 }
+    ];
+    for (const pc of powerCoords) {
+      powerNodes.push({
+        x: pc.gx * TILE_SIZE + 22,
+        y: pc.gy * TILE_SIZE + 22,
+        name: pc.name,
+        hp: 180,
+        maxHp: 180,
+        destroyed: false,
+        blackoutTimer: 0,
+        blackoutRadius: pc.radius,
+        flickerTimer: 0
+      });
+    }
+
     // 10 Ringing Green Payphones across all 7 Mega-Districts
     const phoneCoords = [
       { gx: 40, gy: 40, gang: 'runners',   title: 'CARBON HYPER-RUN',   type: 'checkpoint' },
@@ -1331,6 +1386,7 @@
     muscle:   { name: 'SABRE MUSCLE',        w: 56, h: 28, maxSpeed: 375, accel: 340, grip: 0.84, maxHp: 310,  mass: 1.45, colors: ['#ea580c', '#b91c1c', '#1d4ed8', '#18181b'], stripe: true },
     cab:      { name: 'KAUFMAN CAB',         w: 54, h: 27, maxSpeed: 310, accel: 275, grip: 0.91, maxHp: 280,  mass: 1.15, colors: ['#facc15'], isCab: true },
     truck:    { name: 'HAULER 18-WHEELER',   w: 96, h: 34, maxSpeed: 255, accel: 210, grip: 0.88, maxHp: 900,  mass: 4.6,  colors: ['#b91c1c', '#1d4ed8', '#15803d', '#c2410c', '#cbd5e1'], isTruck: true },
+    firetruck:{ name: 'LEONIDA FD ENGINE 07',w: 90, h: 33, maxSpeed: 295, accel: 245, grip: 0.90, maxHp: 1100, mass: 5.2,  colors: ['#dc2626'], isFiretruck: true },
     bike:     { name: 'PCJ-600 SUPERBIKE',   w: 38, h: 14, maxSpeed: 460, accel: 455, grip: 0.95, maxHp: 150,  mass: 0.45, colors: ['#e11d48', '#16a34a', '#0284c7', '#eab308'], isBike: true, exposedRider: true },
     skate:    { name: 'NEON SKATEBOARD',     w: 28, h: 10, maxSpeed: 195, accel: 290, grip: 0.97, maxHp: 100,  mass: 0.25, colors: ['#ff2a85', '#00f0ff', '#39ff14', '#ffe600'], isSkate: true, exposedRider: true },
     falcon:   { name: 'FALCON GUNSHIP HELI',   w: 98,  h: 46,  maxSpeed: 480, accel: 360, grip: 0.94, maxHp: 640,  mass: 2.8,  colors: ['#dc2626', '#0284c7', '#3f4f3e', '#ea580c'], isHeli: true, isFalcon: true },
@@ -1354,6 +1410,50 @@
   let customWaypoint = null; // { x, y } set from Megamap
 
   let activeMission = null;
+
+  // Live WLTV Action News 6 PiP Broadcast, Sky-Drone Photo Cam & Stunt Jump State
+  const newsState = {
+    manualOverride: null, // null = auto (3★+ or disaster), true = forced ON, false = forced OFF
+    disasterTimer: 0,
+    headline: 'WLTV SKY-CAM 6 LIVE OVER LEONIDA METROPOLIS',
+    headlineTimer: 0
+  };
+  const droneState = {
+    active: false,
+    x: 40 * TILE_SIZE + 80,
+    y: 40 * TILE_SIZE + 80,
+    zoom: 0.42
+  };
+  const stuntState = {
+    active: false,
+    startX: 0,
+    startY: 0,
+    slowMoTimer: 0
+  };
+  let fireDispatchCooldown = 0;
+
+  function setBreakingNews(text, disasterBoostSec = 0) {
+    newsState.headline = text;
+    newsState.headlineTimer = 9.0;
+    if (disasterBoostSec > 0) {
+      newsState.disasterTimer = Math.max(newsState.disasterTimer, disasterBoostSec);
+    }
+    const tickEl = document.getElementById('news-ticker-text');
+    if (tickEl) tickEl.textContent = text;
+  }
+
+  function isBlackedOutAt(wx, wy) {
+    for (let i = 0; i < powerNodes.length; i++) {
+      const pn = powerNodes[i];
+      if (!pn.destroyed || pn.blackoutTimer <= 0) continue;
+      // Brief initial transformer arc flicker before full blackout settles!
+      if (pn.flickerTimer > 0 && Math.sin(pn.flickerTimer * 42) > 0.15) continue;
+      const dx = wx - pn.x;
+      const dy = wy - pn.y;
+      if (dx * dx + dy * dy <= pn.blackoutRadius * pn.blackoutRadius) return true;
+    }
+    return false;
+  }
 
   // ==========================================
   // 4B. REAL-TIME 24-HOUR SOLAR EPHEMERIS & DYNAMIC WEATHER
@@ -1600,8 +1700,10 @@
     }
 
     if (code === 'Escape') {
+      const hadModal = !droppodModal.classList.contains('hidden') || !megamapModal.classList.contains('hidden');
       toggleDropPodModal(false);
       toggleMegamapModal(false);
+      if (!hadModal && droneState.active) toggleDroneMode();
       return;
     }
 
@@ -1625,7 +1727,7 @@
     } else if (code === 'KeyE') {
       if (player.vehicle) {
         player.vehicle.sirenOn = !player.vehicle.sirenOn;
-        sfx.playHorn(player.vehicle.isPolice);
+        sfx.playHorn(player.vehicle.isPolice || player.vehicle.isFiretruck);
       }
     } else if (code === 'KeyR') {
       if (window.MidiSoundtrack) {
@@ -1657,6 +1759,14 @@
           );
         }
       }
+    } else if (code === 'KeyU') {
+      toggleTowCable();
+    } else if (code === 'KeyN') {
+      toggleNewsCam();
+    } else if (code === 'KeyP') {
+      toggleDroneMode();
+    } else if (code === 'KeyO') {
+      snapPostcardPNG();
     } else if (code === 'KeyT') {
       advanceTimeOfDay();
     } else if (code === 'KeyH') {
@@ -1679,11 +1789,17 @@
   window.addEventListener('mousedown', (e) => {
     sfx.init();
     if (!droppodModal.classList.contains('hidden') || !megamapModal.classList.contains('hidden')) return;
-    if (e.target.closest('.quick-actions') || e.target.closest('#hud-bottom-left')) return;
+    if (e.target.closest('.quick-actions') || e.target.closest('#hud-bottom-left') || e.target.closest('#drone-hud') || e.target.closest('#news-pip')) return;
     if (e.button === 0) {
       mouse.down = true;
       mouse.hasAimed = true;
+    } else if (e.button === 2) {
+      toggleTowCable();
     }
+  });
+
+  window.addEventListener('contextmenu', (e) => {
+    if (megamapModal.classList.contains('hidden')) e.preventDefault();
   });
 
   window.addEventListener('mouseup', (e) => {
@@ -1691,6 +1807,10 @@
   });
 
   window.addEventListener('wheel', (e) => {
+    if (droneState.active) {
+      droneState.zoom = Math.max(0.24, Math.min(1.45, droneState.zoom * (e.deltaY > 0 ? 0.90 : 1.11)));
+      return;
+    }
     cycleWeapon(e.deltaY > 0 ? 1 : -1);
   });
 
@@ -1699,12 +1819,102 @@
     updateHUD();
   }
 
+  function toggleNewsCam() {
+    const currentlyShown = newsState.manualOverride === true ||
+      (newsState.manualOverride === null && (Math.floor(player.wanted) >= 3 || newsState.disasterTimer > 0));
+    newsState.manualOverride = !currentlyShown;
+    showBanner(newsState.manualOverride ? '📺 WLTV SKY-CAM 6 LIVE FEED ON' : '📺 WLTV SKY-CAM 6 MINIMIZED', '#ef4444');
+  }
+
+  function toggleDroneMode() {
+    droneState.active = !droneState.active;
+    const dh = document.getElementById('drone-hud');
+    if (dh) dh.classList.toggle('hidden', !droneState.active);
+    if (droneState.active) {
+      const anchor = player.vehicle || player;
+      droneState.x = anchor.x;
+      droneState.y = anchor.y;
+      droneState.zoom = 0.44;
+      showBanner('🛸 SKY-DRONE ACTIVE — [WASD] PAN • [WHEEL] ZOOM • [O] SNAP PNG', '#00f0ff');
+    } else {
+      showBanner('🛸 RETURNED TO PLAYER CAMERA', '#00f0ff');
+    }
+  }
+
+  function snapPostcardPNG() {
+    try {
+      const link = document.createElement('a');
+      link.download = `leonida-carbon-${Date.now()}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      showBanner('📸 POSTCARD SAVED TO DOWNLOADS!', '#39ff14');
+    } catch (_) {
+      showBanner('📸 SNAPSHOT CAPTURED!', '#39ff14');
+    }
+  }
+
+  function toggleTowCable() {
+    const v = player.vehicle;
+    if (!v || (!v.isHeli && !v.isTruck && !v.isFiretruck && !v.isTank)) return;
+
+    // Release currently towed vehicle -> Catapult / Air-Drop!
+    if (v.towTarget) {
+      const target = v.towTarget;
+      target.towedBy = null;
+      v.towTarget = null;
+      if ((target.altitude || 0) > 12) {
+        target.airDropTimer = 1.6;
+        target.airDropVz = 0;
+      }
+      sfx.playDropPod();
+      showBanner(`🪝 RELEASED ${target.name}!`, '#ffe600');
+      return;
+    }
+
+    // Latch nearest vehicle or permanent charred wreck within 195px!
+    let best = null;
+    let bestD = 195;
+    for (const cand of vehicles) {
+      if (cand === v || cand.isAirliner || cand.isJet || cand.towedBy) continue;
+      if ((cand.altitude || 0) > 35) continue;
+      const d = Math.hypot(cand.x - v.x, cand.y - v.y);
+      if (d < bestD) {
+        bestD = d;
+        best = cand;
+      }
+    }
+    if (best) {
+      v.towTarget = best;
+      best.towedBy = v;
+      best.airDropTimer = 0;
+      if (best.driver && best.driver !== 'player') {
+        best.driver = null; // Terrified NPC bails or freezes as car lifts into the sky!
+      }
+      sfx.playDropPod();
+      spawnSparks(best.x, best.y, 12, '#00f0ff');
+      showBanner(`🪝 MAG-CABLE LATCHED: ${best.name} — SWING WRECKING BALL!`, '#00f0ff');
+      if (v.isHeli) {
+        setBreakingNews(`BREAKING: ROGUE HELICOPTER SWINGING ${best.name} OVER ${getDistrictName(v.x, v.y)}!`, 14);
+      }
+    } else {
+      showBanner('🪝 FLY / DRIVE CLOSER TO A VEHICLE TO MAG-TOW [R-CLICK / U]', '#94a3b8');
+    }
+  }
+
   // Wire HUD Buttons, Orbital Drop-Pod Cards & Satellite Megamap Fast-Travel
   document.getElementById('btn-droppod').addEventListener('click', () => toggleDropPodModal());
   document.getElementById('close-droppod').addEventListener('click', () => toggleDropPodModal(false));
   document.getElementById('btn-megamap').addEventListener('click', () => toggleMegamapModal());
   document.getElementById('close-megamap').addEventListener('click', () => toggleMegamapModal(false));
   document.getElementById('btn-weather').addEventListener('click', () => cycleWeather());
+  const btnNewsEl = document.getElementById('btn-newscam');
+  if (btnNewsEl) btnNewsEl.addEventListener('click', () => toggleNewsCam());
+  const newsHeaderEl = document.getElementById('news-pip-header');
+  if (newsHeaderEl) newsHeaderEl.addEventListener('click', () => toggleNewsCam());
+  const btnDroneEl = document.getElementById('btn-drone');
+  if (btnDroneEl) btnDroneEl.addEventListener('click', () => toggleDroneMode());
+  const btnSnapEl = document.getElementById('btn-snap-png');
+  if (btnSnapEl) btnSnapEl.addEventListener('click', () => snapPostcardPNG());
   const btnTimeEl = document.getElementById('btn-time');
   if (btnTimeEl) btnTimeEl.addEventListener('click', () => advanceTimeOfDay());
   document.getElementById('minimap-trigger').addEventListener('click', () => toggleMegamapModal(true));
@@ -1856,6 +2066,7 @@
       isHyper: !!spec.isHyper,
       isCab: !!spec.isCab,
       isTruck: !!spec.isTruck,
+      isFiretruck: !!spec.isFiretruck,
       isBike: !!spec.isBike,
       isSkate: !!spec.isSkate,
       isJet: !!spec.isJet,
@@ -1867,7 +2078,7 @@
       exposedRider: !!spec.exposedRider,
       isPolice: !!spec.isPolice,
       isSwat: !!spec.isSwat,
-      sirenOn: !!spec.isPolice,
+      sirenOn: !!(spec.isPolice || spec.isFiretruck),
       sirenPhase: Math.random() * 10,
       driver: driverType,
       altitude: (spec.isJet && driverType === 'civilian') ? (spec.isAirliner ? 295 : 240) : (spec.isHeli && driverType === 'police' ? 140 : 0),
@@ -1912,7 +2123,17 @@
     sfx.playDropPod();
     const gx = Math.max(0, Math.min(GRID_W - 1, Math.floor(wx / TILE_SIZE)));
     const gy = Math.max(0, Math.min(GRID_H - 1, Math.floor(wy / TILE_SIZE)));
+    if (droneState.active) {
+      droneState.active = false;
+      const dh = document.getElementById('drone-hud');
+      if (dh) dh.classList.add('hidden');
+    }
     if (player.vehicle) {
+      if (player.vehicle.towTarget) {
+        player.vehicle.towTarget.towedBy = null;
+        player.vehicle.towTarget.altitude = 0;
+        player.vehicle.towTarget = null;
+      }
       player.vehicle.x = wx;
       player.vehicle.y = wy;
       player.vehicle.vx = 0;
@@ -2097,8 +2318,10 @@
     spawnVehicle('skate',   40 * TILE_SIZE + 26,  40 * TILE_SIZE + 26, 0, null);
     spawnVehicle('truck',   40 * TILE_SIZE + 48,  41 * TILE_SIZE + 60, Math.PI * 0.5, null);
     spawnVehicle('stinger', 41 * TILE_SIZE + 45,  40 * TILE_SIZE + 114, 0, null);
-    // Downtown Helipad Plaza — Player-flyable Falcon Gunship Helicopter!
-    spawnVehicle('falcon',  41 * TILE_SIZE + 80,  39 * TILE_SIZE + 80, 0, null);
+    // Downtown Helipad Plaza — Player-flyable Falcon Gunship Helicopter & Ready-to-Roll Leonida Fire Engine!
+    spawnVehicle('falcon',    41 * TILE_SIZE + 80,  39 * TILE_SIZE + 80, 0, null);
+    spawnVehicle('firetruck', 38 * TILE_SIZE + 80,  40 * TILE_SIZE + 114, 0, null);
+    spawnVehicle('firetruck', 57 * TILE_SIZE + 114, 41 * TILE_SIZE + 80, Math.PI * 0.5, null);
 
     // 2. Leonida International Spaceport & Military Airbase Apron (Real-Scale Jets, Colossal 747-8 Jumbo & Gunship Heli)
     spawnVehicle('jet',      9 * TILE_SIZE + 80,  50 * TILE_SIZE + 80, Math.PI * 0.5, null);
@@ -2159,6 +2382,40 @@
     spawnGangCrew(29 * TILE_SIZE + 30, 60 * TILE_SIZE + 30, 'gators', 4, true);    // Port Docks Gator Enforcers
     spawnGangCrew(56 * TILE_SIZE + 30, 52 * TILE_SIZE + 30, 'syndicate', 4, true); // South Ocean Syndicate Crew
     spawnGangCrew(36 * TILE_SIZE + 26, 35 * TILE_SIZE + 26, 'runners', 3, false);  // Downtown Border Runners
+
+    // 8. Living Water Predators: Everglades Bayou Alligators & Atlantic / Bay Great White Sharks!
+    const gatorSpots = [
+      [18, 22], [19, 28], [20, 34], [17, 38], [21, 42], [15, 18], [22, 30], [19, 45]
+    ];
+    for (const [gx, gy] of gatorSpots) {
+      if (worldGrid[gy] && worldGrid[gy][gx] === 4) {
+        waterPredators.push({
+          kind: 'gator',
+          x: gx * TILE_SIZE + 80,
+          y: gy * TILE_SIZE + 80,
+          angle: Math.random() * Math.PI * 2,
+          speed: 44,
+          phase: Math.random() * 10,
+          biteCooldown: 0
+        });
+      }
+    }
+    const sharkSpots = [
+      [63, 30], [64, 44], [65, 54], [76, 36], [77, 48], [63, 18], [75, 26], [62, 62]
+    ];
+    for (const [gx, gy] of sharkSpots) {
+      if (worldGrid[gy] && worldGrid[gy][gx] === 4) {
+        waterPredators.push({
+          kind: 'shark',
+          x: gx * TILE_SIZE + 80,
+          y: gy * TILE_SIZE + 80,
+          angle: Math.random() * Math.PI * 2,
+          speed: 78,
+          phase: Math.random() * 10,
+          biteCooldown: 0
+        });
+      }
+    }
   }
 
   populateInitialEntities();
@@ -2170,6 +2427,15 @@
 
     if (player.vehicle) {
       const v = player.vehicle;
+      if (v.towTarget) {
+        const tt = v.towTarget;
+        tt.towedBy = null;
+        v.towTarget = null;
+        if ((tt.altitude || 0) > 12) {
+          tt.airDropTimer = 1.6;
+          tt.airDropVz = 0;
+        }
+      }
 
       // Helicopter Low-Hover or Landed Exit -> Cleanly Settle Skids & Park Without Throwing/Crashing!
       if (v.isHeli && (v.heliLanded || (v.altitude || 0) <= 52)) {
@@ -2295,6 +2561,11 @@
       }
       bestV.driver = 'player';
       bestV.unmannedGlide = false;
+      if (bestV.towedBy) {
+        bestV.towedBy.towTarget = null;
+        bestV.towedBy = null;
+        bestV.altitude = 0;
+      }
       if (bestV.isJet || bestV.isHeli) {
         bestV.wasPlayerAircraft = true;
       }
@@ -2302,17 +2573,19 @@
         bestV.heliLanded = (bestV.altitude || 0) <= 6;
         bestV.autoLanding = false;
         sfx.playHeliSpool(true);
-        showBanner(`🚁 ${bestV.name} — [SPACE / L] LAND • [F] PARK • [L-CLICK / CTRL] ROCKETS`, '#00f0ff');
+        showBanner(`🚁 ${bestV.name} — [SPACE / L] LAND • [F] PARK • [R-CLICK / U] MAG-TOW`, '#00f0ff');
       } else if (bestV.isAirliner) {
         showBanner(`✈️ ${bestV.name} — [L-CLICK / CTRL] AGM MISSILES • [W] FLY • CRASH = 5★!`, '#00f0ff');
       } else if (bestV.isJet) {
         showBanner(`✈️ ${bestV.name} — [L-CLICK / CTRL] FIRE AGM MISSILES • [F] PARACHUTE!`, '#00f0ff');
+      } else if (bestV.isFiretruck) {
+        showBanner(`🚒 ${bestV.name} — [L-CLICK / CTRL] HYDRO-CANNON • [E] SIREN • [R-CLICK / U] MAG-TOW`, '#38bdf8');
       }
       player.vehicle = bestV;
       player.z = 0;
       player.parachute = null;
       player.inWater = false;
-      if (!bestV.isHeli) sfx.playHorn(bestV.isPolice);
+      if (!bestV.isHeli) sfx.playHorn(bestV.isPolice || bestV.isFiretruck);
       if (window.MidiSoundtrack) {
         const st = window.MidiSoundtrack.tracks[window.MidiSoundtrack.currentStationIdx];
         showRadioBanner(st ? `${st.name} // ${st.subtitle}` : window.MidiSoundtrack.getCurrentTrackLabel());
@@ -3279,11 +3552,94 @@
       }
     }
 
+    if (hitOpenWater && radius >= 140) {
+      tsunamiWaves.push({
+        x,
+        y,
+        r: 22,
+        maxR: Math.min(760, radius * 2.55),
+        speed: 265 + Math.min(145, radius * 0.35),
+        force: 360 + radius * 0.9,
+        life: 2.4,
+        maxLife: 2.4
+      });
+      if (radius >= 240) {
+        setBreakingNews(`TSUNAMI SURGE ALERT: MASSIVE IMPACT IN ${getDistrictName(x, y)} WATERS!`, 14);
+      }
+    }
+
+    // Rupture nearby RON-99 Gas Station pumps (Domino Chain-Reaction!) & High-Voltage Power Substations!
+    for (let gi = 0; gi < gasStations.length; gi++) {
+      const gs = gasStations[gi];
+      for (let pi = 0; pi < gs.pumps.length; pi++) {
+        const pump = gs.pumps[pi];
+        if (!pump.exploded && Math.hypot(pump.x - x, pump.y - y) < radius * 1.06) {
+          ruptureGasPump(gs, pump, 0.26);
+        }
+      }
+    }
+    for (let ni = 0; ni < powerNodes.length; ni++) {
+      const pn = powerNodes[ni];
+      if (!pn.destroyed && Math.hypot(pn.x - x, pn.y - y) < radius + 28) {
+        damagePowerSubstation(pn, damage * 0.78, true);
+      }
+    }
+
     if (!player.vehicle && player.z < 40 && !(player.crashProtectTimer > 0)) {
       const d = Math.hypot(player.x - x, player.y - y);
       if (d < radius) {
         damagePlayer(damage * 0.42 * (1 - d / radius));
       }
+    }
+  }
+
+  function ruptureGasPump(station, pump, maxFuse = 1.15) {
+    if (!pump || pump.exploded) return;
+    if (!pump.leaking) {
+      pump.leaking = true;
+      pump.fuseTimer = maxFuse;
+      spawnSparks(pump.x, pump.y, 12, '#f97316');
+      addFloatingText(pump.x, pump.y - 24, '⛽ FUEL RUPTURE!!', '#ff6d00');
+    } else {
+      pump.fuseTimer = Math.min(pump.fuseTimer, maxFuse);
+    }
+  }
+
+  function detonateGasPump(station, pump) {
+    if (!pump || pump.exploded) return;
+    pump.exploded = true;
+    pump.leaking = false;
+    station.exploded = true;
+    addCash(850, station.x, station.y);
+    addWanted(1.15);
+    showBanner(`💥 ${station.name} THERMOBARIC BLAST!`, '#ff6d00');
+    setBreakingNews(`BREAKING: ${station.name} ERUPTS IN MASSIVE RON-99 FIREBALL!`, 15);
+    for (let i = 0; i < station.pumps.length; i++) {
+      const sib = station.pumps[i];
+      if (sib !== pump && !sib.exploded) {
+        ruptureGasPump(station, sib, 0.28);
+      }
+    }
+    createExplosion(pump.x, pump.y, 275, 560, true);
+  }
+
+  function damagePowerSubstation(pn, amount, fromPlayer = true) {
+    if (!pn || pn.destroyed) return;
+    pn.hp -= amount;
+    spawnSparks(pn.x, pn.y, 10, '#38bdf8');
+    if (pn.hp <= 0) {
+      pn.hp = 0;
+      pn.destroyed = true;
+      pn.blackoutTimer = 55.0;
+      pn.flickerTimer = 1.35;
+      shockwaves.push({ x: pn.x, y: pn.y, r: 14, maxR: 420, color: '#00f0ff', life: 0.55, maxLife: 0.55 });
+      if (fromPlayer) {
+        addCash(1200, pn.x, pn.y);
+        addWanted(1.35);
+      }
+      showBanner(`⚡ ${pn.name} BLOWN — DISTRICT POWER BLACKOUT!`, '#00f0ff');
+      setBreakingNews(`GRID EMERGENCY: ${pn.name} DESTROYED — BLACKOUT ACROSS ${getDistrictName(pn.x, pn.y)}!`, 16);
+      createExplosion(pn.x, pn.y, 185, 340, false);
     }
   }
 
@@ -3303,8 +3659,18 @@
       player.multiplier = 1;
       player.reflexActive = false;
       document.getElementById('reflex-overlay').classList.add('hidden');
+      if (droneState.active) {
+        droneState.active = false;
+        const dh = document.getElementById('drone-hud');
+        if (dh) dh.classList.add('hidden');
+      }
       player.cash = Math.max(0, player.cash - 100);
       if (player.vehicle) {
+        if (player.vehicle.towTarget) {
+          player.vehicle.towTarget.towedBy = null;
+          player.vehicle.towTarget.altitude = 0;
+          player.vehicle.towTarget = null;
+        }
         player.vehicle.driver = null;
         player.vehicle = null;
       }
@@ -3434,6 +3800,11 @@
     } else if (player.reflex < player.maxReflex) {
       player.reflex = Math.min(player.maxReflex, player.reflex + rawDt * 9);
       if (Math.random() < 0.2) updateHUD();
+    }
+
+    if (stuntState.slowMoTimer > 0) {
+      stuntState.slowMoTimer = Math.max(0, stuntState.slowMoTimer - rawDt);
+      if (!player.reflexActive) dt = rawDt * 0.48;
     }
 
     const activeEntity = player.vehicle || player;
@@ -3569,7 +3940,7 @@
       }
     }
 
-    // Insane Stunt Jump Ramps!
+    // Insane Stunt Jump Ramps + Cinematic Hang-Time Slow-Mo & FT Distance Bonus!
     if (player.vehicle && !player.vehicle.isJet && !player.vehicle.isHeli) {
       const v = player.vehicle;
       const spd = Math.hypot(v.vx, v.vy);
@@ -3579,12 +3950,24 @@
             v.stuntAirTimer = 1.25;
             v.vx *= 1.32;
             v.vy *= 1.32;
+            stuntState.active = true;
+            stuntState.startX = v.x;
+            stuntState.startY = v.y;
+            stuntState.slowMoTimer = 0.95;
             addCash(1000, v.x, v.y);
-            showBanner('🚀 INSANE STUNT BONUS! +$1000', '#00f0ff');
+            showBanner('🚀 INSANE STUNT LAUNCH! +$1000', '#00f0ff');
+            setBreakingNews(`AIRBORNE STUNT: DAREDEVIL LAUNCHES OFF ${getDistrictName(v.x, v.y)} RAMP!`, 10);
             break;
           }
         }
+      } else if (stuntState.active && (!v.stuntAirTimer || v.stuntAirTimer <= 0)) {
+        stuntState.active = false;
+        const distFt = Math.max(45, Math.round(Math.hypot(v.x - stuntState.startX, v.y - stuntState.startY) * 0.44));
+        addCash(distFt * 4, v.x, v.y);
+        showBanner(`🏁 STUNT TOUCHDOWN: ${distFt} FT! +$${distFt * 4}`, '#39ff14');
       }
+    } else if (stuntState.active) {
+      stuntState.active = false;
     }
 
     // Update MIDI Soundtrack Engine
@@ -3592,8 +3975,17 @@
       window.MidiSoundtrack.update(rawDt, !!player.vehicle, player.wanted, !!activeMission);
     }
 
-    // Player Driving / Boating / Helicopter / Jet / Tank Controls
-    if (player.vehicle) {
+    // Player Driving / Boating / Helicopter / Jet / Tank / Firetruck Controls
+    if (player.vehicle && droneState.active) {
+      const v = player.vehicle;
+      if (!v.isJet && !v.isHeli) {
+        v.vx *= Math.max(0, 1 - 3.5 * rawDt);
+        v.vy *= Math.max(0, 1 - 3.5 * rawDt);
+      }
+      player.x = v.x;
+      player.y = v.y;
+      player.z = v.altitude || 0;
+    } else if (player.vehicle) {
       const v = player.vehicle;
       const playerDt = player.reflexActive ? rawDt * 0.62 : dt; // Player retains sharper control during Bullet-Time!
 
@@ -3727,8 +4119,8 @@
         v.isAirborne = v.altitude > 16;
       }
 
-      // Aim Tank 120mm Turret independently toward mouse cursor!
-      if (v.isTank) {
+      // Aim Tank 120mm Turret or Firetruck Roof Hydro-Cannon toward mouse cursor!
+      if (v.isTank || v.isFiretruck) {
         v.turretAngle = Math.atan2(mouse.worldY - v.y, mouse.worldX - v.x);
       }
 
@@ -3830,7 +4222,7 @@
         addCash(250, player.x, player.y);
         showBanner('🪂 PERFECT PARACHUTE TOUCHDOWN! +$250', '#39ff14');
       }
-    } else {
+    } else if (!droneState.active) {
       // On-Foot & Swimming Controls (WASD / ZQSD / Arrows)
       const footDt = player.reflexActive ? rawDt * 0.68 : dt;
       let mx = 0, my = 0;
@@ -3989,6 +4381,7 @@
     updateVehicles(dt);
     updatePeds(dt);
     updateBullets(dt);
+    updateMesmerizingSystems(dt, rawDt);
 
     // Update Progressive Building Collapses, 3D Masonry Debris, Water Ripples, Beams & Particles
     for (let i = collapsingBuildings.length - 1; i >= 0; i--) {
@@ -4133,6 +4526,9 @@
       sw.r = sw.maxR * (1 - Math.max(0, sw.life / sw.maxLife));
       if (sw.life <= 0) shockwaves.splice(i, 1);
     }
+    if (particles.length > 750) {
+      particles.splice(0, particles.length - 750);
+    }
     for (let i = particles.length - 1; i >= 0; i--) {
       const pt = particles[i];
       pt.x += pt.vx * dt;
@@ -4179,33 +4575,52 @@
       }
     }
 
-    // Dynamic Altitude & Speed-Adaptive Camera + Speedometer HUD Update
+    // Dynamic Altitude & Speed-Adaptive Camera (or Free-Fly Sky-Drone Camera!) + Speedometer HUD Update
     const speed = player.vehicle ? Math.hypot(player.vehicle.vx, player.vehicle.vy) : Math.hypot(player.vx, player.vy);
     const activeAlt = player.vehicle ? (player.vehicle.altitude || 0) : (player.z || 0);
-    let targetZoom = 1.04;
-    if (player.vehicle) {
-      if (player.vehicle.isAirliner) {
-        targetZoom = activeAlt > 25
-          ? Math.max(0.34, 0.64 - activeAlt * 0.0010)
-          : Math.max(0.52, 0.68 - (speed / 540) * 0.14);
-      } else if (player.vehicle.isJet && activeAlt > 45) {
-        targetZoom = Math.max(0.42, 0.80 - activeAlt * 0.0015);
-      } else if (player.vehicle.isJet) {
-        targetZoom = Math.max(0.62, 0.84 - (speed / 685) * 0.18);
-      } else if (player.vehicle.isHeli && activeAlt > 25) {
-        targetZoom = Math.max(0.62, 0.90 - activeAlt * 0.0018);
-      } else {
-        targetZoom = Math.max(0.68, 0.98 - (speed / 580) * 0.28);
+    if (droneState.active) {
+      let dmx = 0, dmy = 0;
+      if (keys['KeyW'] || keys['ArrowUp'] || keys['KeyZ'] || pressedKeys['w'] || pressedKeys['z'] || pressedKeys['arrowup']) dmy -= 1;
+      if (keys['KeyS'] || keys['ArrowDown'] || pressedKeys['s'] || pressedKeys['arrowdown']) dmy += 1;
+      if (keys['KeyA'] || keys['ArrowLeft'] || keys['KeyQ'] || pressedKeys['a'] || pressedKeys['q'] || pressedKeys['arrowleft']) dmx -= 1;
+      if (keys['KeyD'] || keys['ArrowRight'] || pressedKeys['d'] || pressedKeys['arrowright']) dmx += 1;
+      const dLen = Math.hypot(dmx, dmy);
+      if (dLen > 0) {
+        const boost = (keys['ShiftLeft'] || keys['ShiftRight']) ? 1.85 : 1.0;
+        const panSpd = (560 / Math.max(0.26, droneState.zoom)) * boost;
+        droneState.x = Math.max(80, Math.min(WORLD_W - 80, droneState.x + (dmx / dLen) * panSpd * rawDt));
+        droneState.y = Math.max(80, Math.min(WORLD_H - 80, droneState.y + (dmy / dLen) * panSpd * rawDt));
       }
-    } else if (player.z > 10) {
-      targetZoom = Math.max(0.70, 0.98 - player.z * 0.0012);
-    }
-    camera.zoom += (targetZoom - camera.zoom) * 4.2 * rawDt;
+      camera.zoom += (droneState.zoom - camera.zoom) * 8.0 * rawDt;
+      camera.x += (droneState.x - camera.x) * 10.5 * rawDt;
+      camera.y += (droneState.y - camera.y) * 10.5 * rawDt;
+    } else {
+      let targetZoom = 1.04;
+      if (player.vehicle) {
+        if (player.vehicle.isAirliner) {
+          targetZoom = activeAlt > 25
+            ? Math.max(0.34, 0.64 - activeAlt * 0.0010)
+            : Math.max(0.52, 0.68 - (speed / 540) * 0.14);
+        } else if (player.vehicle.isJet && activeAlt > 45) {
+          targetZoom = Math.max(0.42, 0.80 - activeAlt * 0.0015);
+        } else if (player.vehicle.isJet) {
+          targetZoom = Math.max(0.62, 0.84 - (speed / 685) * 0.18);
+        } else if (player.vehicle.isHeli && activeAlt > 25) {
+          targetZoom = Math.max(0.62, 0.90 - activeAlt * 0.0018);
+        } else {
+          targetZoom = Math.max(0.68, 0.98 - (speed / 580) * 0.28);
+        }
+      } else if (player.z > 10) {
+        targetZoom = Math.max(0.70, 0.98 - player.z * 0.0012);
+      }
+      if (stuntState.slowMoTimer > 0) targetZoom *= 0.85;
+      camera.zoom += (targetZoom - camera.zoom) * 4.2 * rawDt;
 
-    const leadX = activeEntity.x + (player.vehicle ? player.vehicle.vx * 0.22 : (mouse.worldX - player.x) * 0.12);
-    const leadY = activeEntity.y + (player.vehicle ? player.vehicle.vy * 0.22 : (mouse.worldY - player.y) * 0.12);
-    camera.x += (leadX - camera.x) * 7.5 * rawDt;
-    camera.y += (leadY - camera.y) * 7.5 * rawDt;
+      const leadX = activeEntity.x + (player.vehicle ? player.vehicle.vx * 0.22 : (mouse.worldX - player.x) * 0.12);
+      const leadY = activeEntity.y + (player.vehicle ? player.vehicle.vy * 0.22 : (mouse.worldY - player.y) * 0.12);
+      camera.x += (leadX - camera.x) * 7.5 * rawDt;
+      camera.y += (leadY - camera.y) * 7.5 * rawDt;
+    }
 
     if (camera.shake > 0) {
       camera.shake = Math.max(0, camera.shake - 36 * rawDt);
@@ -4222,6 +4637,605 @@
       document.getElementById('veh-hp-bar').style.width = `${Math.max(0, Math.round((player.vehicle.hp / player.vehicle.maxHp) * 100))}%`;
     } else {
       speedoHud.classList.add('hidden');
+    }
+  }
+
+  // ==========================================
+  // 10A. MESMERIZING WORLD SYSTEMS: HYDRO-CANNON, GAS DOMINOES, BLACKOUTS, MAG-TOW, SWAT ROPES, SHARKS/GATORS & NEWS TV
+  // ==========================================
+  function fireWaterCannon(v, aimAng) {
+    if (!v || waterJets.length > 165) return;
+    const nozX = v.x + Math.cos(aimAng) * 20;
+    const nozY = v.y + Math.sin(aimAng) * 20;
+    for (let s = 0; s < 2; s++) {
+      const jitter = (Math.random() - 0.5) * 0.085;
+      const spd = 575 + Math.random() * 80;
+      waterJets.push({
+        x: nozX + Math.cos(aimAng) * (s * 9),
+        y: nozY + Math.sin(aimAng) * (s * 9),
+        vx: (v.vx || 0) * 0.35 + Math.cos(aimAng + jitter) * spd,
+        vy: (v.vy || 0) * 0.35 + Math.sin(aimAng + jitter) * spd,
+        r: 6.2 + Math.random() * 2.6,
+        life: 0.56,
+        maxLife: 0.56,
+        sourceVeh: v
+      });
+    }
+    if (Math.random() < 0.65) {
+      particles.push({
+        x: nozX,
+        y: nozY,
+        vx: Math.cos(aimAng + (Math.random() - 0.5) * 0.45) * 190,
+        vy: Math.sin(aimAng + (Math.random() - 0.5) * 0.45) * 190,
+        r: 4 + Math.random() * 4,
+        color: 'rgba(224, 242, 254, 0.76)',
+        life: 0.22,
+        maxLife: 0.22
+      });
+    }
+  }
+
+  function findNearestActiveFire(ox, oy, maxDist = 1350) {
+    let best = null;
+    let bestD = maxDist;
+    for (let i = 0; i < palmTrees.length; i++) {
+      const tr = palmTrees[i];
+      if (tr.burnTimer && tr.burnTimer > 0) {
+        const d = Math.hypot(tr.x - ox, tr.y - oy);
+        if (d < bestD) { bestD = d; best = { x: tr.x, y: tr.y, kind: 'tree' }; }
+      }
+    }
+    for (let i = 0; i < vehicles.length; i++) {
+      const v = vehicles[i];
+      if (v.wreckBurnTimer && v.wreckBurnTimer > 1.2) {
+        const d = Math.hypot(v.x - ox, v.y - oy);
+        if (d < bestD) { bestD = d; best = { x: v.x, y: v.y, kind: 'wreck' }; }
+      }
+    }
+    for (let i = 0; i < gasStations.length; i++) {
+      const gs = gasStations[i];
+      for (let p = 0; p < gs.pumps.length; p++) {
+        const pump = gs.pumps[p];
+        if (pump.leaking && !pump.exploded) {
+          const d = Math.hypot(pump.x - ox, pump.y - oy);
+          if (d < bestD) { bestD = d; best = { x: pump.x, y: pump.y, kind: 'pump' }; }
+        }
+      }
+    }
+    return best;
+  }
+
+  function emitSteamCloud(x, y, count = 4) {
+    for (let i = 0; i < count; i++) {
+      particles.push({
+        x: x + (Math.random() - 0.5) * 14,
+        y: y + (Math.random() - 0.5) * 14,
+        vx: (Math.random() - 0.5) * 42,
+        vy: -24 - Math.random() * 38,
+        r: 7 + Math.random() * 9,
+        color: 'rgba(241, 245, 249, 0.78)',
+        life: 0.48,
+        maxLife: 0.48
+      });
+    }
+  }
+
+  function updateMesmerizingSystems(dt, rawDt) {
+    // 1. RON-99 Gas Stations: Vehicle Ramming, Sparking Fuel Leaks & Domino Chain-Reaction Detonations!
+    for (let gi = 0; gi < gasStations.length; gi++) {
+      const gs = gasStations[gi];
+      for (let pi = 0; pi < gs.pumps.length; pi++) {
+        const pump = gs.pumps[pi];
+        if (pump.exploded) {
+          if (Math.random() < dt * 2.2) {
+            particles.push({
+              x: pump.x + (Math.random() - 0.5) * 18,
+              y: pump.y + (Math.random() - 0.5) * 18,
+              vx: (Math.random() - 0.5) * 18,
+              vy: -22 - Math.random() * 24,
+              r: 6 + Math.random() * 7,
+              color: 'rgba(39, 39, 42, 0.62)',
+              life: 0.65,
+              maxLife: 0.65
+            });
+          }
+          continue;
+        }
+        // Check vehicle ramming into fuel island
+        for (let vi = 0; vi < vehicles.length; vi++) {
+          const v = vehicles[vi];
+          if (v.isAirborne || (v.altitude || 0) > 16) continue;
+          const vSpd = Math.hypot(v.vx, v.vy);
+          if (vSpd > 88 && Math.abs(v.x - pump.x) < 38 && Math.abs(v.y - pump.y) < 38) {
+            if (Math.hypot(v.x - pump.x, v.y - pump.y) < 34) {
+              pump.hp -= vSpd * 0.55;
+              v.vx *= 0.68;
+              v.vy *= 0.68;
+              if (pump.hp <= 0) ruptureGasPump(gs, pump, vSpd > 210 ? 0.38 : 1.05);
+            }
+          }
+        }
+        if (pump.leaking) {
+          if (Math.random() < 0.72) {
+            const a = Math.random() * Math.PI * 2;
+            particles.push({
+              x: pump.x + Math.cos(a) * 6,
+              y: pump.y + Math.sin(a) * 6,
+              vx: Math.cos(a) * (40 + Math.random() * 65),
+              vy: Math.sin(a) * (40 + Math.random() * 65) - 18,
+              r: 4 + Math.random() * 5,
+              color: Math.random() < 0.55 ? '#fb923c' : '#fde047',
+              life: 0.28,
+              maxLife: 0.28
+            });
+          }
+          pump.fuseTimer -= dt;
+          if (pump.fuseTimer <= 0) {
+            detonateGasPump(gs, pump);
+          }
+        }
+      }
+    }
+
+    // 2. High-Voltage Grid Substations: Tank/Vehicle Ramming, HV Arc Sparks & Rolling District Blackout Timers!
+    for (let ni = 0; ni < powerNodes.length; ni++) {
+      const pn = powerNodes[ni];
+      if (!pn.destroyed) {
+        for (let vi = 0; vi < vehicles.length; vi++) {
+          const v = vehicles[vi];
+          if (v.isAirborne || (v.altitude || 0) > 16) continue;
+          const vSpd = Math.hypot(v.vx, v.vy);
+          if ((v.isTank && vSpd > 30) || vSpd > 135) {
+            if (Math.abs(v.x - pn.x) < 42 && Math.abs(v.y - pn.y) < 42 && Math.hypot(v.x - pn.x, v.y - pn.y) < 38) {
+              damagePowerSubstation(pn, v.isTank ? 220 : vSpd * 0.42, v.driver === 'player');
+              if (!v.isTank) { v.vx *= 0.55; v.vy *= 0.55; }
+              break;
+            }
+          }
+        }
+      } else {
+        if (pn.flickerTimer > 0) pn.flickerTimer = Math.max(0, pn.flickerTimer - rawDt);
+        if (pn.blackoutTimer > 0) {
+          pn.blackoutTimer = Math.max(0, pn.blackoutTimer - rawDt);
+          if (Math.random() < dt * 3.8) {
+            spawnSparks(pn.x + (Math.random() - 0.5) * 20, pn.y + (Math.random() - 0.5) * 20, 4, '#38bdf8');
+          }
+          if (pn.blackoutTimer <= 0) {
+            pn.destroyed = false;
+            pn.hp = pn.maxHp;
+            showBanner(`💡 ${pn.name} REPAIRED — DISTRICT POWER RESTORED`, '#fde047');
+          }
+        }
+      }
+    }
+
+    // 3. Pressurized Firetruck Hydro-Cannon Streams: Extinguish Fires + Billowing Steam + Knockback Cars & Peds!
+    for (let i = waterJets.length - 1; i >= 0; i--) {
+      const wj = waterJets[i];
+      wj.x += wj.vx * dt;
+      wj.y += wj.vy * dt;
+      wj.vx *= Math.max(0, 1 - 1.15 * dt);
+      wj.vy *= Math.max(0, 1 - 1.15 * dt);
+      wj.life -= dt;
+      if (wj.life <= 0) {
+        waterJets.splice(i, 1);
+        continue;
+      }
+
+      const spd = Math.hypot(wj.vx, wj.vy) || 1;
+      const nx = wj.vx / spd;
+      const ny = wj.vy / spd;
+      let splashed = false;
+
+      // 3a. Douse burning palm trees!
+      for (let ti = 0; ti < palmTrees.length; ti++) {
+        const tr = palmTrees[ti];
+        if (tr.burnTimer && tr.burnTimer > 0 && Math.abs(wj.x - tr.x) < 36 && Math.abs(wj.y - tr.y) < 36) {
+          if (Math.hypot(wj.x - tr.x, wj.y - tr.y) < 34) {
+            tr.burnTimer = Math.max(0, tr.burnTimer - 1.8);
+            emitSteamCloud(tr.x, tr.y - 8, 3);
+            if (tr.burnTimer <= 0) {
+              tr.burnTimer = 0;
+              addFloatingText(tr.x, tr.y - 24, '💨 FIRE DOUSED!', '#38bdf8');
+              if (wj.sourceVeh && wj.sourceVeh === player.vehicle) addCash(125, tr.x, tr.y);
+            }
+            splashed = true;
+            break;
+          }
+        }
+      }
+
+      // 3b. Douse burning buildings & cool leaking gas pumps!
+      const wgx = Math.floor(wj.x / TILE_SIZE);
+      const wgy = Math.floor(wj.y / TILE_SIZE);
+      if (!splashed && wgx >= 0 && wgx < GRID_W && wgy >= 0 && wgy < GRID_H) {
+        const cellBlds = buildingsGrid[wgy][wgx];
+        for (let bi = 0; bi < cellBlds.length; bi++) {
+          const bld = cellBlds[bi];
+          if (bld.collapsing || bld.collapsed) continue;
+          if (wj.x >= bld.x && wj.x <= bld.x + bld.w && wj.y >= bld.y && wj.y <= bld.y + bld.h) {
+            if (bld.burnTimer && bld.burnTimer > 0) {
+              bld.burnTimer = Math.max(0, bld.burnTimer - 1.6);
+              emitSteamCloud(wj.x, wj.y, 3);
+              if (bld.burnTimer <= 0 && wj.sourceVeh === player.vehicle) {
+                addCash(200, wj.x, wj.y);
+                addFloatingText(wj.x, wj.y - 20, '💨 BUILDING SAVED! +$200', '#38bdf8');
+              }
+            }
+            splashed = true;
+            break;
+          }
+        }
+      }
+
+      if (!splashed) {
+        for (let gi = 0; gi < gasStations.length; gi++) {
+          const gs = gasStations[gi];
+          for (let pi = 0; pi < gs.pumps.length; pi++) {
+            const pump = gs.pumps[pi];
+            if (pump.leaking && !pump.exploded && Math.hypot(wj.x - pump.x, wj.y - pump.y) < 32) {
+              pump.leaking = false;
+              pump.hp = Math.max(30, pump.hp);
+              emitSteamCloud(pump.x, pump.y, 4);
+              addFloatingText(pump.x, pump.y - 20, '💨 FUEL LEAK COOLED!', '#38bdf8');
+              splashed = true;
+              break;
+            }
+          }
+        }
+      }
+
+      // 3c. Cool blazing vehicle wrecks & physically hydro-push cars across intersections!
+      if (!splashed) {
+        for (let vi = 0; vi < vehicles.length; vi++) {
+          const v = vehicles[vi];
+          if (v === wj.sourceVeh || v.isAirborne || (v.altitude || 0) > 20) continue;
+          if (Math.abs(wj.x - v.x) < 42 && Math.abs(wj.y - v.y) < 42 && Math.hypot(wj.x - v.x, wj.y - v.y) < 36) {
+            if (v.wreckBurnTimer && v.wreckBurnTimer > 0) {
+              v.wreckBurnTimer = Math.max(0, v.wreckBurnTimer - 1.9);
+              emitSteamCloud(v.x, v.y, 3);
+              if (v.wreckBurnTimer <= 0 && wj.sourceVeh === player.vehicle) {
+                addCash(150, v.x, v.y);
+                addFloatingText(v.x, v.y - 22, '💨 WRECK EXTINGUISHED!', '#38bdf8');
+              }
+            }
+              if (!v.isTank && !v.isAirliner) {
+                const push = 46 / Math.max(0.8, v.mass || 1);
+                v.vx += nx * push;
+                v.vy += ny * push;
+              }
+              wj.life -= 0.18;
+              if (wj.life <= 0) splashed = true;
+              break;
+            }
+          }
+        }
+
+      // 3d. Non-lethal Riot Hydro-Blast on Pedestrians (+ extinguishes burning peds!)
+      if (!splashed) {
+        for (let pi = 0; pi < peds.length; pi++) {
+          const p = peds[pi];
+          if (Math.abs(wj.x - p.x) < 26 && Math.abs(wj.y - p.y) < 26 && Math.hypot(wj.x - p.x, wj.y - p.y) < 22) {
+            p.burnTimer = 0;
+            p.vx += nx * 175;
+            p.vy += ny * 175;
+            p.panicTimer = Math.max(p.panicTimer || 0, 3.2);
+            wj.life -= 0.12;
+            if (wj.life <= 0) splashed = true;
+            break;
+          }
+        }
+      }
+
+      if (splashed) {
+        waterJets.splice(i, 1);
+      }
+    }
+
+    // 4. Autonomous Leonida Fire Department Engine 07 Dispatch when City Fires Burn!
+    if (fireDispatchCooldown > 0) fireDispatchCooldown = Math.max(0, fireDispatchCooldown - rawDt);
+    if (fireDispatchCooldown <= 0) {
+      const activeBlaze = findNearestActiveFire(player.x, player.y, 1100);
+      if (activeBlaze) {
+        const activeFD = vehicles.some(v => v.isFiretruck && v.driver === 'firefighter' && v.hp > 0);
+        if (!activeFD) {
+          for (let tries = 0; tries < 10; tries++) {
+            const ang = Math.random() * Math.PI * 2;
+            const dist = 540 + Math.random() * 240;
+            const fx = Math.max(180, Math.min(WORLD_W - 180, activeBlaze.x + Math.cos(ang) * dist));
+            const fy = Math.max(180, Math.min(WORLD_H - 180, activeBlaze.y + Math.sin(ang) * dist));
+            const fgx = Math.floor(fx / TILE_SIZE);
+            const fgy = Math.floor(fy / TILE_SIZE);
+            if (worldGrid[fgy] && worldGrid[fgy][fgx] === 0) {
+              const fd = spawnVehicle('firetruck', fgx * TILE_SIZE + 80, fgy * TILE_SIZE + 80, ang + Math.PI, 'firefighter');
+              if (fd) {
+                fd.sirenOn = true;
+                fireDispatchCooldown = 32.0;
+                showBanner('🚒 LEONIDA FD ENGINE 07 DISPATCHED TO BLAZE!', '#ef4444');
+              }
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    // 5. Magnetic Tow-Cable / Sky Wrecking-Ball Physics & Air-Dropped Vehicle Gravity Slam!
+    for (let vi = 0; vi < vehicles.length; vi++) {
+      const v = vehicles[vi];
+      if (v.towTarget) {
+        const t = v.towTarget;
+        if (v.hp <= 0 || (!v.driver && v !== player.vehicle) || !vehicles.includes(t)) {
+          if (t) t.towedBy = null;
+          v.towTarget = null;
+        } else {
+          const cableLen = v.isHeli ? 84 : 92;
+          const anchorX = v.x - Math.cos(v.angle) * (v.isHeli ? 6 : v.w * 0.44);
+          const anchorY = v.y - Math.sin(v.angle) * (v.isHeli ? 6 : v.w * 0.44);
+          const dx = t.x - anchorX;
+          const dy = t.y - anchorY;
+          const dist = Math.hypot(dx, dy) || 1;
+          const nx = dx / dist;
+          const ny = dy / dist;
+
+          if (dist > cableLen) {
+            const stretch = dist - cableLen;
+            t.vx -= nx * stretch * 17.5 * dt;
+            t.vy -= ny * stretch * 17.5 * dt;
+            // Transfer carrier momentum for dramatic pendulum whip!
+            t.vx += (v.vx - t.vx) * 2.1 * dt;
+            t.vy += (v.vy - t.vy) * 2.1 * dt;
+            if (dist > cableLen * 1.55) {
+              t.x = anchorX + nx * cableLen * 1.55;
+              t.y = anchorY + ny * cableLen * 1.55;
+            }
+          }
+          t.vx *= Math.max(0, 1 - 1.05 * dt);
+          t.vy *= Math.max(0, 1 - 1.05 * dt);
+
+          const tSpd = Math.hypot(t.vx, t.vy);
+          if (tSpd > 25) {
+            const moveAng = Math.atan2(t.vy, t.vx);
+            let ad = moveAng - t.angle;
+            while (ad > Math.PI) ad -= Math.PI * 2;
+            while (ad < -Math.PI) ad += Math.PI * 2;
+            t.angle += ad * 4.5 * dt;
+          }
+
+          if (v.isHeli) {
+            const targetAlt = Math.max(0, (v.altitude || 0) - 24);
+            t.altitude = (t.altitude || 0) + (targetAlt - (t.altitude || 0)) * 6.0 * dt;
+            t.isAirborne = t.altitude > 14;
+          } else {
+            t.altitude = 0;
+            t.isAirborne = false;
+          }
+
+          if (t.towHitCooldown && t.towHitCooldown > 0) {
+            t.towHitCooldown = Math.max(0, t.towHitCooldown - dt);
+          }
+
+          // Wrecking-Ball Collisions against Glazed Skyscrapers, Palm Trees & Traffic!
+          if (tSpd > 78 && (!t.towHitCooldown || t.towHitCooldown <= 0)) {
+            const tgx = Math.floor(t.x / TILE_SIZE);
+            const tgy = Math.floor(t.y / TILE_SIZE);
+            for (let cy = Math.max(0, tgy - 1); cy <= Math.min(GRID_H - 1, tgy + 1); cy++) {
+              for (let cx = Math.max(0, tgx - 1); cx <= Math.min(GRID_W - 1, tgx + 1); cx++) {
+                const cellBlds = buildingsGrid[cy][cx];
+                for (let bi = 0; bi < cellBlds.length; bi++) {
+                  const bld = cellBlds[bi];
+                  if (bld.collapsing || bld.collapsed) continue;
+                  if ((t.altitude || 0) > (bld.height || 42) + 16) continue;
+                  const nearX = Math.max(bld.x, Math.min(t.x, bld.x + bld.w));
+                  const nearY = Math.max(bld.y, Math.min(t.y, bld.y + bld.h));
+                  if (Math.hypot(t.x - nearX, t.y - nearY) < Math.max(t.w || 54, t.h || 28) * 0.42) {
+                    shatterBuildingGlass(bld, nearX, nearY, 10);
+                    damageBuilding(bld, Math.max(48, tSpd * 0.42), nearX, nearY, v === player.vehicle);
+                    spawnSparks(nearX, nearY, 12, '#38bdf8');
+                    camera.shake = Math.min(24, camera.shake + 9);
+                    t.vx = -t.vx * 0.58 + (t.x - nearX) * 3.2;
+                    t.vy = -t.vy * 0.58 + (t.y - nearY) * 3.2;
+                    t.towHitCooldown = 0.20;
+                    break;
+                  }
+                }
+                const cellTrees = treesGrid[cy] && treesGrid[cy][cx];
+                if (cellTrees && (t.altitude || 0) < 42) {
+                  for (let ti = 0; ti < cellTrees.length; ti++) {
+                    const tr = cellTrees[ti];
+                    if (!tr.fallen && !tr.falling && Math.hypot(t.x - tr.x, t.y - tr.y) < 26) {
+                      knockDownTree(tr, Math.atan2(t.vy, t.vx));
+                    }
+                  }
+                }
+              }
+            }
+            for (let oi = 0; oi < vehicles.length; oi++) {
+              const other = vehicles[oi];
+              if (other === v || other === t) continue;
+              if (Math.abs((t.altitude || 0) - (other.altitude || 0)) > 28) continue;
+              if (Math.hypot(other.x - t.x, other.y - t.y) < 46) {
+                other.vx += t.vx * 0.88;
+                other.vy += t.vy * 0.88;
+                other.hp -= tSpd * 0.24;
+                spawnSparks((other.x + t.x) * 0.5, (other.y + t.y) * 0.5, 8);
+                t.towHitCooldown = 0.16;
+                break;
+              }
+            }
+          }
+        }
+      }
+
+      // Air-Dropped Vehicle Freefall & Ground Smash!
+      if (!v.towedBy && v.airDropTimer && v.airDropTimer > 0) {
+        v.airDropVz = (v.airDropVz || 0) + 320 * dt;
+        v.altitude = Math.max(0, (v.altitude || 0) - v.airDropVz * dt);
+        v.isAirborne = v.altitude > 14;
+        if (v.altitude <= 0) {
+          v.airDropTimer = 0;
+          v.airDropVz = 0;
+          v.isAirborne = false;
+          shockwaves.push({ x: v.x, y: v.y, r: 10, maxR: 110, color: '#ffe600', life: 0.36, maxLife: 0.36 });
+          camera.shake = Math.min(28, camera.shake + 15);
+          if (v.wrecked || v.hp <= 150) {
+            v.hp = 0;
+            createExplosion(v.x, v.y, 150, 260, true);
+          } else {
+            v.hp -= 145;
+            spawnSparks(v.x, v.y, 16, '#ffe600');
+          }
+        }
+      }
+    }
+
+    // 6. 4★+ VCPD Helicopter Tactical SWAT Fast-Rope Insertions!
+    for (let i = swatRopes.length - 1; i >= 0; i--) {
+      const sr = swatRopes[i];
+      if (sr.heli && sr.heli.hp > 0) {
+        sr.x += (sr.heli.x + sr.offsetX - sr.x) * 5.0 * dt;
+        sr.y += (sr.heli.y + sr.offsetY - sr.y) * 5.0 * dt;
+        sr.alt = sr.heli.altitude || 140;
+      }
+      sr.progress += dt * 0.72;
+      if (sr.progress >= 1.0) {
+        const sgx = Math.max(0, Math.min(GRID_W - 1, Math.floor(sr.x / TILE_SIZE)));
+        const sgy = Math.max(0, Math.min(GRID_H - 1, Math.floor(sr.y / TILE_SIZE)));
+        if (worldGrid[sgy] && (worldGrid[sgy][sgx] !== 4 || hasBridgeAt(sgx, sgy))) {
+          const trooper = spawnPed(sr.x, sr.y, 'police');
+          if (trooper) trooper.hp = 145;
+          shockwaves.push({ x: sr.x, y: sr.y, r: 4, maxR: 26, color: '#38bdf8', life: 0.22, maxLife: 0.22 });
+        }
+        swatRopes.splice(i, 1);
+      }
+    }
+
+    // 7. Living Water Predators: Everglades Alligators & Atlantic Great White Sharks!
+    for (let i = 0; i < waterPredators.length; i++) {
+      const wp = waterPredators[i];
+      wp.phase += dt * (wp.kind === 'shark' ? 4.4 : 3.1);
+      if (wp.biteCooldown > 0) wp.biteCooldown = Math.max(0, wp.biteCooldown - dt);
+
+      let prey = null;
+      let preyDist = 250;
+      if (!player.vehicle && player.inWater && player.z <= 4) {
+        const d = Math.hypot(player.x - wp.x, player.y - wp.y);
+        if (d < preyDist) { prey = player; preyDist = d; }
+      }
+      for (let pi = 0; pi < peds.length; pi++) {
+        const p = peds[pi];
+        if (p.inWater) {
+          const d = Math.hypot(p.x - wp.x, p.y - wp.y);
+          if (d < preyDist) { prey = p; preyDist = d; }
+        }
+      }
+
+      let curSpd = wp.speed;
+      if (prey) {
+        const targetAng = Math.atan2(prey.y - wp.y, prey.x - wp.x);
+        let ad = targetAng - wp.angle;
+        while (ad > Math.PI) ad -= Math.PI * 2;
+        while (ad < -Math.PI) ad += Math.PI * 2;
+        wp.angle += ad * 3.8 * dt;
+        curSpd = wp.speed * 1.48;
+
+        if (preyDist < 28 && wp.biteCooldown <= 0) {
+          wp.biteCooldown = 2.1;
+          spawnWaterPlume(wp.x, wp.y, 0.55);
+          spawnSparks(wp.x, wp.y, 8, '#dc2626');
+          if (prey === player) {
+            damagePlayer(wp.kind === 'shark' ? 24 : 18);
+            showBanner(wp.kind === 'shark' ? '🦈 GREAT WHITE SHARK ATTACK!' : '🐊 EVERGLADES ALLIGATOR LUNGE!', '#ff1744');
+          } else {
+            prey.hp -= 75;
+          }
+        }
+      } else {
+        wp.angle += Math.sin(wp.phase * 0.45 + i) * 0.55 * dt;
+      }
+
+      const nx = wp.x + Math.cos(wp.angle) * curSpd * dt;
+      const ny = wp.y + Math.sin(wp.angle) * curSpd * dt;
+      const gx = Math.floor(nx / TILE_SIZE);
+      const gy = Math.floor(ny / TILE_SIZE);
+      if (gx >= 1 && gx < GRID_W - 1 && gy >= 1 && gy < GRID_H - 1 && worldGrid[gy][gx] === 4) {
+        wp.x = nx;
+        wp.y = ny;
+        if (Math.random() < dt * 2.4 && waterRipples.length < 140) {
+          waterRipples.push({
+            x: wp.x - Math.cos(wp.angle) * 14,
+            y: wp.y - Math.sin(wp.angle) * 14,
+            r: 5,
+            maxR: wp.kind === 'shark' ? 28 : 22,
+            life: 0.48,
+            maxLife: 0.48,
+            color: 'rgba(186, 230, 253, 0.34)'
+          });
+        }
+      } else {
+        wp.angle += Math.PI * 0.76 + (Math.random() - 0.5) * 0.45;
+      }
+    }
+
+    // 8. Water-Crash Tsunami Surge Rings: Outward Hydrodynamic Push on Speedboats, Floating Cars & Swimmers!
+    for (let i = tsunamiWaves.length - 1; i >= 0; i--) {
+      const tw = tsunamiWaves[i];
+      tw.r += tw.speed * dt;
+      tw.life -= rawDt;
+      if (tw.life <= 0 || tw.r >= tw.maxR) {
+        tsunamiWaves.splice(i, 1);
+        continue;
+      }
+      for (let vi = 0; vi < vehicles.length; vi++) {
+        const v = vehicles[vi];
+        if (v.isAirborne || !onWaterLayer(v)) continue;
+        const d = Math.hypot(v.x - tw.x, v.y - tw.y);
+        if (Math.abs(d - tw.r) < 38 && d > 1) {
+          const ang = Math.atan2(v.y - tw.y, v.x - tw.x);
+          const surge = (tw.force * dt * 2.8) / Math.max(0.8, v.mass || 1);
+          v.vx += Math.cos(ang) * surge;
+          v.vy += Math.sin(ang) * surge;
+          v.angularVel = (v.angularVel || 0) + (Math.random() - 0.5) * 1.4 * dt;
+        }
+      }
+      if (!player.vehicle && player.inWater) {
+        const pd = Math.hypot(player.x - tw.x, player.y - tw.y);
+        if (Math.abs(pd - tw.r) < 36 && pd > 1) {
+          const pang = Math.atan2(player.y - tw.y, player.x - tw.x);
+          player.x += Math.cos(pang) * 190 * dt;
+          player.y += Math.sin(pang) * 190 * dt;
+        }
+      }
+    }
+
+    // 9. Live WLTV Action News 6 PiP Chopper Broadcast Visibility & Contextual Chyron
+    if (newsState.disasterTimer > 0) newsState.disasterTimer = Math.max(0, newsState.disasterTimer - rawDt);
+    if (newsState.headlineTimer > 0) newsState.headlineTimer = Math.max(0, newsState.headlineTimer - rawDt);
+    const wStars = Math.floor(player.wanted);
+    const shouldShowNews = newsState.manualOverride === true ||
+      (newsState.manualOverride === null && (wStars >= 3 || newsState.disasterTimer > 0));
+    const newsPipEl = document.getElementById('news-pip');
+    if (newsPipEl) {
+      newsPipEl.classList.toggle('hidden', !shouldShowNews);
+    }
+    if (shouldShowNews && newsState.headlineTimer <= 0) {
+      const distLabel = getDistrictName(player.x, player.y);
+      let msg = `LIVE // WLTV SKY-CAM 6 TRACKING SUSPECT IN ${distLabel}`;
+      if (player.vehicle && player.vehicle.towTarget) {
+        msg = `BREAKING: ROGUE ${player.vehicle.name} SWINGING ${player.vehicle.towTarget.name} AS WRECKING BALL IN ${distLabel}!`;
+      } else if (player.vehicle && player.vehicle.isAirliner) {
+        msg = `FAA EMERGENCY: HIJACKED TITAN 747-8 JUMBO LOW OVER ${distLabel}!`;
+      } else if (player.vehicle && player.vehicle.isTank) {
+        msg = `MARTIAL ALERT: ARMORED M1A3 TANK RAMPAGING THROUGH ${distLabel}!`;
+      } else if (player.vehicle && player.vehicle.isFiretruck) {
+        msg = `SPECIAL REPORT: COMMANDEERED FD ENGINE 07 BLASTING HYDRO-CANNON IN ${distLabel}!`;
+      } else if (wStars >= 5) {
+        msg = `FEDERAL MANHUNT (${wStars}★): SWAT & AIR SUPPORT CONVERGING ON ${distLabel}!`;
+      } else if (wStars >= 3) {
+        msg = `HIGH-SPEED PURSUIT (${wStars}★): VCPD INTERCEPTORS CHASING SUSPECT ACROSS ${distLabel}!`;
+      }
+      setBreakingNews(msg, 0);
+      newsState.headlineTimer = 5.5;
     }
   }
 
@@ -4356,6 +5370,18 @@
         damage: 520, structDmg: 620, demolish: true,
         life: 1.25, color: '#ffe600', explosive: true, tankShell: true, fromPlayer: true
       });
+      return;
+    }
+
+    // 2B. Leonida Fire Department Engine 07 — Pressurized Roof Deluge Hydro-Cannon!
+    if (player.vehicle && player.vehicle.isFiretruck) {
+      const v = player.vehicle;
+      player.fireTimer = 0.048;
+      const tAng = mouse.hasAimed
+        ? Math.atan2(mouse.worldY - v.y, mouse.worldX - v.x)
+        : (v.turretAngle !== undefined ? v.turretAngle : v.angle);
+      v.turretAngle = tAng;
+      fireWaterCannon(v, tAng);
       return;
     }
 
@@ -4854,7 +5880,7 @@
             const desiredSpd = dist > 230 ? 295 : 95;
             v.vx += (Math.cos(v.angle) * desiredSpd - v.vx) * 2.5 * dt;
             v.vy += (Math.sin(v.angle) * desiredSpd - v.vy) * 2.5 * dt;
-            // Helicopter sniper bursts at 4+ stars
+            // Helicopter sniper bursts & 4★+ Tactical SWAT Fast-Rope Deployments!
             if (player.wanted >= 4 && dist < 480 && Math.random() < dt * 1.4) {
               bullets.push({
                 x: v.x, y: v.y,
@@ -4862,6 +5888,19 @@
                 vy: Math.sin(targetAngle) * 700,
                 damage: 9, life: 0.8, color: '#fef08a', fromPlayer: false
               });
+            }
+            if (player.wanted >= 4 && dist < 310) {
+              v.swatDropCooldown = Math.max(0, (v.swatDropCooldown || 0) - dt);
+              if (v.swatDropCooldown <= 0 && swatRopes.length < 4) {
+                const rgx = Math.max(0, Math.min(GRID_W - 1, Math.floor(v.x / TILE_SIZE)));
+                const rgy = Math.max(0, Math.min(GRID_H - 1, Math.floor(v.y / TILE_SIZE)));
+                if (worldGrid[rgy] && (worldGrid[rgy][rgx] !== 4 || hasBridgeAt(rgx, rgy))) {
+                  v.swatDropCooldown = 9.0;
+                  swatRopes.push({ heli: v, x: v.x - 14, y: v.y + 8, offsetX: -14, offsetY: 8, alt: v.altitude || 140, progress: 0 });
+                  swatRopes.push({ heli: v, x: v.x + 14, y: v.y - 8, offsetX: 14, offsetY: -8, alt: v.altitude || 140, progress: 0.14 });
+                  showBanner('🪢 SWAT FAST-ROPE TEAM DEPLOYING!', '#38bdf8');
+                }
+              }
             }
           } else if (!player.vehicle && player.z < 20 && dist < 155 && !v.isTank) {
             v.vx *= Math.max(0, 1 - 7.5 * dt);
@@ -4895,6 +5934,38 @@
             v.sirenOn = false;
             v.driver = 'civilian';
           }
+        }
+      } else if (v.driver === 'firefighter' && v.hp > 0) {
+        const blaze = findNearestActiveFire(v.x, v.y, 1500);
+        if (blaze) {
+          v.sirenOn = true;
+          const dist = Math.hypot(blaze.x - v.x, blaze.y - v.y);
+          const targetAngle = Math.atan2(blaze.y - v.y, blaze.x - v.x);
+          v.turretAngle = targetAngle;
+          if (dist > 185) {
+            let diff = targetAngle - v.angle;
+            while (diff > Math.PI) diff -= Math.PI * 2;
+            while (diff < -Math.PI) diff += Math.PI * 2;
+            v.angle += Math.sign(diff) * Math.min(Math.abs(diff), 2.5 * dt);
+            v.vx += Math.cos(v.angle) * v.accel * 0.82 * dt;
+            v.vy += Math.sin(v.angle) * v.accel * 0.82 * dt;
+            const fSpd = Math.hypot(v.vx, v.vy);
+            if (fSpd > v.maxSpeed * 0.85) {
+              v.vx = (v.vx / fSpd) * v.maxSpeed * 0.85;
+              v.vy = (v.vy / fSpd) * v.maxSpeed * 0.85;
+            }
+          } else {
+            v.vx *= Math.max(0, 1 - 6.0 * dt);
+            v.vy *= Math.max(0, 1 - 6.0 * dt);
+            v.hoseTimer = (v.hoseTimer || 0) - dt;
+            if (v.hoseTimer <= 0) {
+              v.hoseTimer = 0.055;
+              fireWaterCannon(v, targetAngle + Math.sin(nowSec * 5.5) * 0.14);
+            }
+          }
+        } else {
+          v.sirenOn = false;
+          v.driver = 'civilian';
         }
       } else if (!v.driver) {
         if (v.unmannedGlide && (v.altitude || 0) > 0) {
@@ -4958,12 +6029,12 @@
       if (v.stuntAirTimer && v.stuntAirTimer > 0) {
         v.stuntAirTimer = Math.max(0, v.stuntAirTimer - dt);
         v.altitude = Math.sin((v.stuntAirTimer / 1.25) * Math.PI) * 50;
-      } else if (!v.isJet && !v.isHeli) {
+      } else if (!v.isJet && !v.isHeli && !v.towedBy && !(v.airDropTimer > 0)) {
         v.altitude = 0;
       }
 
       const vSpeed = Math.hypot(v.vx, v.vy);
-      v.isAirborne = ((v.altitude || 0) > 16) || (v.stuntAirTimer > 0);
+      v.isAirborne = ((v.altitude || 0) > 14) || (v.stuntAirTimer > 0);
 
       // Realistic Helicopter Main & Tail Rotor ("Hélice") Spin-Up / Coast-Down Physics!
       if (v.isHeli) {
@@ -5219,6 +6290,7 @@
         const isAirCrash = !!(v.isJet || v.isHeli || v.crashDemolish);
         if (v.isAirliner) {
           // COLOSSAL 747-8 JUMBO CITY CATASTROPHE: Multi-Block Blast Wave, Wing Fuel-Tank Detonations, 64 Wreckage Chunks & 5★!
+          setBreakingNews(`CATASTROPHE: JUMBO 747-8 CRASHES IN ${getDistrictName(v.x, v.y)} — 5-STAR FEDERAL EMERGENCY!`, 22);
           sfx.playCatastrophicCrash();
           createExplosion(v.x, v.y, 540, 1850, true);
           const cCos = Math.cos(v.angle);
@@ -5630,6 +6702,32 @@
         damageBuilding(hitBuilding, b.structDmg || (b.tankShell ? b.damage : 6), b.x, b.y, b.fromPlayer);
       }
 
+      if (!hitSomething && (!b.airToGround || (b.alt || 0) < 48)) {
+        for (let gi = 0; gi < gasStations.length && !hitSomething; gi++) {
+          const gs = gasStations[gi];
+          for (let pi = 0; pi < gs.pumps.length; pi++) {
+            const pump = gs.pumps[pi];
+            if (!pump.exploded && Math.hypot(b.x - pump.x, b.y - pump.y) < 22) {
+              pump.hp -= b.damage * (b.flame ? 2.5 : 1.0);
+              if (b.flame || b.explosive || pump.hp <= 0) {
+                ruptureGasPump(gs, pump, b.explosive ? 0.18 : 1.05);
+              }
+              spawnSparks(b.x, b.y, 6, '#fb923c');
+              hitSomething = true;
+              break;
+            }
+          }
+        }
+        for (let ni = 0; ni < powerNodes.length && !hitSomething; ni++) {
+          const pn = powerNodes[ni];
+          if (!pn.destroyed && Math.hypot(b.x - pn.x, b.y - pn.y) < 32) {
+            damagePowerSubstation(pn, b.structDmg || b.damage, b.fromPlayer);
+            hitSomething = true;
+            break;
+          }
+        }
+      }
+
       if (!hitSomething) {
         for (const v of vehicles) {
           if (b.fromPlayer && player.vehicle === v) continue;
@@ -5978,6 +7076,32 @@
         }
       }
     }
+    // Tsunami Surge Rings & Living Water Predators (Alligators & Great White Sharks!)
+    for (let i = 0; i < tsunamiWaves.length; i++) {
+      const tw = tsunamiWaves[i];
+      if (Math.abs(tw.x - camera.x) > halfW + tw.r || Math.abs(tw.y - camera.y) > halfH + tw.r) continue;
+      const a = Math.max(0, tw.life / tw.maxLife);
+      ctx.save();
+      ctx.strokeStyle = `rgba(224, 242, 254, ${(a * 0.82).toFixed(2)})`;
+      ctx.lineWidth = 6 * a + 2;
+      ctx.beginPath(); ctx.arc(tw.x, tw.y, tw.r, 0, Math.PI * 2); ctx.stroke();
+      ctx.strokeStyle = `rgba(56, 189, 248, ${(a * 0.52).toFixed(2)})`;
+      ctx.lineWidth = 3 * a + 1;
+      ctx.beginPath(); ctx.arc(tw.x, tw.y, Math.max(4, tw.r - 12), 0, Math.PI * 2); ctx.stroke();
+      ctx.restore();
+    }
+    for (let i = 0; i < waterPredators.length; i++) {
+      const wp = waterPredators[i];
+      if (Math.abs(wp.x - camera.x) > halfW + 60 || Math.abs(wp.y - camera.y) > halfH + 60) continue;
+      const spr = wp.kind === 'shark' ? sf.propSprites.shark : sf.propSprites.gator;
+      if (spr) {
+        ctx.save();
+        ctx.translate(wp.x, wp.y);
+        ctx.rotate(wp.angle + Math.sin(wp.phase) * 0.08);
+        ctx.drawImage(spr, -spr.width * 0.5, -spr.height * 0.5);
+        ctx.restore();
+      }
+    }
     for (const v of vehicles) {
       if (!v.isAirborne && onWaterLayer(v) && Math.abs(v.x - camera.x) <= halfW && Math.abs(v.y - camera.y) <= halfH) {
         drawVehicle(v, lightsOn);
@@ -6064,6 +7188,116 @@
       if (!tree.fallen) continue;
       if (Math.abs(tree.x - camera.x) > halfW + 50 || Math.abs(tree.y - camera.y) > halfH + 50) continue;
       drawPalmTree(tree, nowSec);
+    }
+
+    // 2E. RON-99 HYPER-OCTANE Gas Stations & LEONIDA GRID High-Voltage Power Substations!
+    for (let gi = 0; gi < gasStations.length; gi++) {
+      const gs = gasStations[gi];
+      if (Math.abs(gs.x - camera.x) > halfW + 100 || Math.abs(gs.y - camera.y) > halfH + 100) continue;
+      ctx.save();
+      ctx.translate(gs.x, gs.y);
+      // Concrete Forecourt Pad
+      ctx.fillStyle = gs.exploded ? '#1c1917' : '#475569';
+      ctx.fillRect(-48, -24, 96, 48);
+      ctx.strokeStyle = gs.exploded ? '#44403c' : '#facc15';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(-46, -22, 92, 44);
+
+      // Twin Fuel Pump Dispensers & Leaking Fuel Slicks
+      for (let pi = 0; pi < gs.pumps.length; pi++) {
+        const pump = gs.pumps[pi];
+        const px = pump.x - gs.x;
+        const py = pump.y - gs.y;
+        if (pump.leaking && !pump.exploded) {
+          ctx.fillStyle = 'rgba(249, 115, 22, 0.42)';
+          ctx.beginPath(); ctx.ellipse(px, py + 4, 18 + Math.sin(nowSec * 14) * 3, 11, 0.2, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.fillStyle = pump.exploded ? '#09090b' : '#dc2626';
+        ctx.fillRect(px - 8, py - 6, 16, 12);
+        ctx.fillStyle = pump.exploded ? '#27272a' : '#f8fafc';
+        ctx.fillRect(px - 5, py - 4, 10, 5);
+      }
+
+      // Overhead Illuminated RON-99 Canopy (or Scorched Steel Skeleton!)
+      if (gs.exploded) {
+        ctx.strokeStyle = '#292524';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(-42, -16, 84, 32);
+        ctx.beginPath();
+        ctx.moveTo(-42, -16); ctx.lineTo(42, 16);
+        ctx.moveTo(42, -16); ctx.lineTo(-42, 16);
+        ctx.stroke();
+      } else {
+        const blackedOut = isBlackedOutAt(gs.x, gs.y);
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.28)';
+        ctx.fillRect(-40, -13, 86, 32);
+        ctx.fillStyle = '#f8fafc';
+        ctx.fillRect(-43, -17, 86, 34);
+        ctx.fillStyle = '#dc2626';
+        ctx.fillRect(-43, -17, 86, 6);
+        ctx.fillRect(-43, 11, 86, 6);
+        if (!blackedOut && lightsOn) {
+          ctx.shadowColor = '#fb923c';
+          ctx.shadowBlur = 14;
+        }
+        ctx.fillStyle = '#0f172a';
+        ctx.font = 'bold 8.5px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('⛽ RON-99 OCTANE', 0, 3);
+      }
+      ctx.restore();
+    }
+
+    for (let ni = 0; ni < powerNodes.length; ni++) {
+      const pn = powerNodes[ni];
+      if (Math.abs(pn.x - camera.x) > halfW + 90 || Math.abs(pn.y - camera.y) > halfH + 90) continue;
+      ctx.save();
+      ctx.translate(pn.x, pn.y);
+      // Fenced Transformer Pad
+      ctx.fillStyle = pn.destroyed ? '#18181b' : '#334155';
+      ctx.fillRect(-30, -24, 60, 48);
+      ctx.strokeStyle = pn.destroyed ? '#ef4444' : '#38bdf8';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(-30, -24, 60, 48);
+
+      // Twin HV Transformer Cores & Copper Coils
+      for (const sx of [-13, 13]) {
+        ctx.fillStyle = pn.destroyed ? '#27272a' : '#475569';
+        ctx.fillRect(sx - 9, -14, 18, 28);
+        ctx.fillStyle = pn.destroyed ? '#451a03' : '#d97706';
+        ctx.beginPath(); ctx.arc(sx, -5, 4.5, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(sx, 6, 4.5, 0, Math.PI * 2); ctx.fill();
+      }
+
+      if (!pn.destroyed) {
+        // Live HV Plasma Arc between Busbars
+        if (Math.sin(nowSec * 16 + ni) > -0.2) {
+          ctx.strokeStyle = '#00f0ff';
+          ctx.lineWidth = 1.8;
+          ctx.shadowColor = '#00f0ff';
+          ctx.shadowBlur = 10;
+          ctx.beginPath();
+          ctx.moveTo(-13, -5);
+          ctx.lineTo(0, -8 + Math.sin(nowSec * 45) * 4);
+          ctx.lineTo(13, -5);
+          ctx.stroke();
+        }
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#e0f2fe';
+        ctx.font = 'bold 8px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('⚡ HV GRID', 0, -28);
+      } else {
+        // Pulsing Red Blackout Hazard Beacon!
+        const pulse = 0.45 + 0.55 * Math.abs(Math.sin(nowSec * 7));
+        ctx.fillStyle = `rgba(239, 68, 68, ${pulse.toFixed(2)})`;
+        ctx.beginPath(); ctx.arc(0, 0, 10 + pulse * 8, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#fca5a5';
+        ctx.font = 'bold 8px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(`BLACKOUT ${Math.ceil(pn.blackoutTimer)}S`, 0, -28);
+      }
+      ctx.restore();
     }
 
     // 3. Pickups, Payphones & Checkpoint Rings
@@ -6200,6 +7434,28 @@
       ctx.restore();
     }
 
+    // 6A. Pressurized Firetruck Hydro-Cannon Water Arcs!
+    if (waterJets.length > 0) {
+      ctx.save();
+      for (let i = 0; i < waterJets.length; i++) {
+        const wj = waterJets[i];
+        if (Math.abs(wj.x - camera.x) > halfW || Math.abs(wj.y - camera.y) > halfH) continue;
+        const a = Math.max(0.15, wj.life / wj.maxLife);
+        ctx.strokeStyle = `rgba(125, 211, 252, ${(a * 0.85).toFixed(2)})`;
+        ctx.lineWidth = wj.r * 1.45;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(wj.x, wj.y);
+        ctx.lineTo(wj.x - wj.vx * 0.032, wj.y - wj.vy * 0.032);
+        ctx.stroke();
+        ctx.fillStyle = `rgba(240, 249, 255, ${(a * 0.92).toFixed(2)})`;
+        ctx.beginPath();
+        ctx.arc(wj.x, wj.y, wj.r * 0.65, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
     // 6B. 3D Bouncing Masonry, Concrete, Rebar, Tree Splinters & Shattered Glass Shrapnel (Settles into settledDebrisGrid!)
     for (let i = 0; i < debrisChunks.length; i++) {
       const dc = debrisChunks[i];
@@ -6292,6 +7548,51 @@
       }
     }
 
+    // 8D. High-Tension Carbon Mag-Tow Wrecking-Ball Cables & 4★+ SWAT Tactical Fast-Ropes!
+    for (let i = 0; i < vehicles.length; i++) {
+      const cv = vehicles[i];
+      if (!cv.towTarget) continue;
+      const tv = cv.towTarget;
+      const ax = cv.x - Math.cos(cv.angle) * (cv.isHeli ? 6 : cv.w * 0.44);
+      const ay = cv.y - Math.sin(cv.angle) * (cv.isHeli ? 6 : cv.w * 0.44) - (cv.altitude || 0) * 0.24;
+      const bx = tv.x;
+      const by = tv.y - (tv.altitude || 0) * 0.24;
+      ctx.save();
+      ctx.strokeStyle = 'rgba(15, 23, 42, 0.78)';
+      ctx.lineWidth = 4.2;
+      ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+      ctx.strokeStyle = '#00f0ff';
+      ctx.lineWidth = 2.0;
+      ctx.setLineDash([6, 4]);
+      ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = '#00f0ff';
+      ctx.beginPath(); ctx.arc(bx, by, 4.5, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }
+
+    for (let i = 0; i < swatRopes.length; i++) {
+      const sr = swatRopes[i];
+      if (Math.abs(sr.x - camera.x) > halfW + 120 || Math.abs(sr.y - camera.y) > halfH + 120) continue;
+      const topY = sr.y - (sr.alt || 140) * 0.24;
+      const botY = sr.y;
+      const manY = topY + (botY - topY) * Math.min(1, sr.progress);
+      ctx.save();
+      ctx.strokeStyle = '#cbd5e1';
+      ctx.lineWidth = 2.0;
+      ctx.beginPath();
+      ctx.moveTo(sr.x, topY);
+      ctx.lineTo(sr.x + Math.sin(nowSec * 9 + i) * 4, botY);
+      ctx.stroke();
+      // Rappelling SWAT Officer
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath(); ctx.arc(sr.x, manY, 6.2, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 1.6;
+      ctx.stroke();
+      ctx.restore();
+    }
+
     // 9. High-Altitude Commercial Airliners, Jets, Falcon Gunships & VCPD Police Chopper (+ Searchlight!)
     for (const v of vehicles) {
       if (v.isAirborne && Math.abs(v.x - camera.x) <= halfW + 580 && Math.abs(v.y - camera.y) <= halfH + 580) {
@@ -6317,6 +7618,7 @@
       const centerCol = isRain ? `rgba(254, 240, 195, ${peakA})` : `rgba(255, 232, 180, ${peakA})`;
       for (const lamp of streetlamps) {
         if (Math.abs(lamp.x - camera.x) > halfW || Math.abs(lamp.y - camera.y) > halfH) continue;
+        if (isBlackedOutAt(lamp.x, lamp.y)) continue;
         const lGrad = ctx.createRadialGradient(lamp.x, lamp.y, 2, lamp.x, lamp.y, lampR);
         lGrad.addColorStop(0, centerCol);
         lGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
@@ -6339,11 +7641,71 @@
     drawMissionArrow();
     ctx.restore();
 
+    // 11B. Live Airborne WLTV SKY-CAM 6 Picture-in-Picture (PiP) TV Broadcast Feed!
+    renderNewsPiP(nowSec);
+
     // 12. Screen-Space 2027 Weather, Ephemeris & Active VCPD Police Pursuit Siren Warning FX
     renderWeatherFX(nowSec);
 
     // 13. High-Res Local Radar Minimap
     renderMinimap();
+  }
+
+  function renderNewsPiP(nowSec) {
+    if (!newsCtx || !newsCamCanvas) return;
+    const pipEl = document.getElementById('news-pip');
+    if (pipEl && pipEl.classList.contains('hidden')) return;
+
+    const pw = newsCamCanvas.width;
+    const ph = newsCamCanvas.height;
+    if (canvas.width < 16 || canvas.height < 16) return;
+    // Dynamic airborne telephoto crop centered on action with subtle helicopter gimbal sway
+    const swayX = Math.sin(nowSec * 1.9) * 26 + Math.cos(nowSec * 4.3) * 7;
+    const swayY = Math.cos(nowSec * 1.5) * 18 + Math.sin(nowSec * 3.7) * 6;
+    let cropW = Math.min(canvas.width * 0.72, 420);
+    let cropH = cropW * (ph / pw);
+    if (cropH > canvas.height) {
+      cropH = canvas.height;
+      cropW = Math.min(canvas.width, cropH * (pw / ph));
+    }
+    const sx = Math.max(0, Math.min(canvas.width - cropW, canvas.width * 0.5 - cropW * 0.5 + swayX));
+    const sy = Math.max(0, Math.min(canvas.height - cropH, canvas.height * 0.5 - cropH * 0.5 + swayY));
+
+    newsCtx.clearRect(0, 0, pw, ph);
+    newsCtx.drawImage(canvas, sx, sy, cropW, cropH, 0, 0, pw, ph);
+
+    // Broadcast TV Scanlines & Subtle Cool Telephoto Tint
+    newsCtx.fillStyle = 'rgba(14, 165, 233, 0.08)';
+    newsCtx.fillRect(0, 0, pw, ph);
+    newsCtx.fillStyle = 'rgba(0, 0, 0, 0.18)';
+    for (let y = 0; y < ph; y += 3) {
+      newsCtx.fillRect(0, y, pw, 1);
+    }
+
+    // Airborne Gimbal Tracking Brackets & Telemetry Overlay
+    const cx = pw * 0.5 + Math.sin(nowSec * 3.1) * 4;
+    const cy = ph * 0.5 + Math.cos(nowSec * 2.7) * 3;
+    newsCtx.strokeStyle = 'rgba(255, 255, 255, 0.78)';
+    newsCtx.lineWidth = 1.3;
+    newsCtx.beginPath();
+    newsCtx.moveTo(cx - 26, cy - 12); newsCtx.lineTo(cx - 26, cy - 20); newsCtx.lineTo(cx - 16, cy - 20);
+    newsCtx.moveTo(cx + 26, cy - 12); newsCtx.lineTo(cx + 26, cy - 20); newsCtx.lineTo(cx + 16, cy - 20);
+    newsCtx.moveTo(cx - 26, cy + 12); newsCtx.lineTo(cx - 26, cy + 20); newsCtx.lineTo(cx - 16, cy + 20);
+    newsCtx.moveTo(cx + 26, cy + 12); newsCtx.lineTo(cx + 26, cy + 20); newsCtx.lineTo(cx + 16, cy + 20);
+    newsCtx.moveTo(cx - 5, cy); newsCtx.lineTo(cx + 5, cy);
+    newsCtx.moveTo(cx, cy - 5); newsCtx.lineTo(cx, cy + 5);
+    newsCtx.stroke();
+
+    const spdMph = Math.round((player.vehicle ? Math.hypot(player.vehicle.vx, player.vehicle.vy) : Math.hypot(player.vx, player.vy)) * 0.30);
+    newsCtx.fillStyle = 'rgba(2, 6, 23, 0.68)';
+    newsCtx.fillRect(6, ph - 18, pw - 12, 14);
+    newsCtx.fillStyle = '#f8fafc';
+    newsCtx.font = 'bold 9px monospace';
+    newsCtx.textAlign = 'left';
+    newsCtx.fillText(`ZOOM 18.4X // ${spdMph} MPH`, 10, ph - 8);
+    newsCtx.fillStyle = '#facc15';
+    newsCtx.textAlign = 'right';
+    newsCtx.fillText(envState.clockStr, pw - 10, ph - 8);
   }
 
   function drawSkyRailAndTrain(halfW, halfH) {
@@ -6910,11 +8272,17 @@
       }
     }
 
-    // Independent Rotating 120mm Cannon Turret for Rhino M1A3 Tank!
+    // Independent Rotating 120mm Cannon Turret for Rhino M1A3 Tank & 360° Roof Water Monitor for Fire Engine!
     if (v.isTank && sf.propSprites.tankTurret) {
       ctx.save();
       ctx.rotate((v.turretAngle || v.angle) - v.angle);
       ctx.drawImage(sf.propSprites.tankTurret, -48, -24);
+      ctx.restore();
+    } else if (v.isFiretruck && sf.propSprites.waterMonitor && !v.wrecked) {
+      ctx.save();
+      ctx.translate(10, 0);
+      ctx.rotate((v.turretAngle !== undefined ? v.turretAngle : v.angle) - v.angle);
+      ctx.drawImage(sf.propSprites.waterMonitor, -18, -14);
       ctx.restore();
     }
 
@@ -8341,7 +9709,7 @@
 
         const roomHash = (f * 19 + c * 31 + seedBase) % 11;
         let winCol;
-        if (envState.windowLitQuota > 0 && roomHash < envState.windowLitQuota) {
+        if (!vol.blackedOut && envState.windowLitQuota > 0 && roomHash < envState.windowLitQuota) {
           winCol = roomHash % 3 === 0
             ? 'rgba(226, 238, 248, 0.70)'
             : 'rgba(255, 236, 185, 0.76)';
@@ -8683,6 +10051,8 @@
 
     for (let i = 0; i < volumes.length; i++) {
       const vol = volumes[i];
+      vol.blackedOut = isBlackedOutAt(vol.anchorX, vol.anchorY);
+      const bldLit = lightsOn && !vol.blackedOut;
       const f0 = vol.baseHeight * 0.0022;
       const f1 = vol.height * 0.0022;
       const bx = vol.x + (vol.anchorX - camera.x) * f0;
@@ -8692,7 +10062,7 @@
 
       // Dynamic 24h Solar/Lunar Cast Ground Shadow (Westward at Dawn -> Tight at Noon -> Long Eastward at Sunset!)
       if (vol.tierLevel === 0) {
-        if (isRain && (lightsOn || envState.windowLitQuota > 2)) {
+        if (isRain && !vol.blackedOut && (bldLit || envState.windowLitQuota > 2)) {
           ctx.fillStyle = 'rgba(255, 232, 180, 0.08)';
           ctx.fillRect(vol.x - 6, vol.y + vol.h, vol.w + 12, 14);
         }
@@ -8720,25 +10090,25 @@
       }
 
       if (vol.shape === 'cylinder') {
-        drawCylinderVolume(vol, bx, by, rx, ry, lightsOn);
+        drawCylinderVolume(vol, bx, by, rx, ry, bldLit);
         continue;
       }
 
       // Draw the two camera-facing extruded architectural walls with real-time solar orientation!
       if (ry > by) {
         // North wall facing camera (always shaded in northern hemisphere)
-        drawArchitecturalWall(bx, by, bx + vol.w, by, rx + vol.w, ry, rx, ry, vol, false, lightsOn);
+        drawArchitecturalWall(bx, by, bx + vol.w, by, rx + vol.w, ry, rx, ry, vol, false, bldLit);
       } else if (ry < by) {
         // South wall facing camera
-        drawArchitecturalWall(bx, by + vol.h, bx + vol.w, by + vol.h, rx + vol.w, ry + vol.h, rx, ry + vol.h, vol, envState.southSunlit, lightsOn);
+        drawArchitecturalWall(bx, by + vol.h, bx + vol.w, by + vol.h, rx + vol.w, ry + vol.h, rx, ry + vol.h, vol, envState.southSunlit, bldLit);
       }
 
       if (rx > bx) {
         // West wall facing camera (sunlit in afternoon & Golden Hour / Vice Sunset!)
-        drawArchitecturalWall(bx, by, bx, by + vol.h, rx, ry + vol.h, rx, ry, vol, envState.westSunlit, lightsOn);
+        drawArchitecturalWall(bx, by, bx, by + vol.h, rx, ry + vol.h, rx, ry, vol, envState.westSunlit, bldLit);
       } else if (rx < bx) {
         // East wall facing camera (sunlit at Atlantic Dawn & Miami Morning!)
-        drawArchitecturalWall(bx + vol.w, by, bx + vol.w, by + vol.h, rx + vol.w, ry + vol.h, rx + vol.w, ry, vol, envState.eastSunlit, lightsOn);
+        drawArchitecturalWall(bx + vol.w, by, bx + vol.w, by + vol.h, rx + vol.w, ry + vol.h, rx + vol.w, ry, vol, envState.eastSunlit, bldLit);
       }
 
       // Draw grounded architectural roof & coping
@@ -8755,7 +10125,7 @@
         ctx.strokeStyle = vol.trimColor || '#d6d3d1';
         ctx.lineWidth = 1.2;
         ctx.strokeRect(px, py, plaqueW, 15);
-        ctx.fillStyle = lightsOn ? '#fef3c7' : '#f5f5f4';
+        ctx.fillStyle = bldLit ? '#fef3c7' : '#f5f5f4';
         ctx.font = 'bold 9.5px sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText(vol.sign, rx + vol.w * 0.5, py + 11);
@@ -9011,6 +10381,22 @@
       if (rx >= 0 && rx <= mw && ry >= 0 && ry <= mh) mctx.fillRect(rx - 2, ry - 2, 4, 4);
     }
 
+    // RON-99 Gas Stations & HV Power Substations on local radar
+    for (const gs of gasStations) {
+      const rx = toRadarX(gs.x), ry = toRadarY(gs.y);
+      if (rx >= 0 && rx <= mw && ry >= 0 && ry <= mh) {
+        mctx.fillStyle = gs.exploded ? '#52525b' : '#fb923c';
+        mctx.fillRect(rx - 2.5, ry - 2.5, 5, 5);
+      }
+    }
+    for (const pn of powerNodes) {
+      const rx = toRadarX(pn.x), ry = toRadarY(pn.y);
+      if (rx >= 0 && rx <= mw && ry >= 0 && ry <= mh) {
+        mctx.fillStyle = pn.destroyed ? '#ef4444' : '#38bdf8';
+        mctx.fillRect(rx - 2.5, ry - 2.5, 5, 5);
+      }
+    }
+
     // Custom Waypoint
     if (customWaypoint) {
       const rx = Math.max(5, Math.min(mw - 5, toRadarX(customWaypoint.x)));
@@ -9084,11 +10470,19 @@
     megaCtx.fillText('LEONIDA SPACEPORT', 11 * TILE_SIZE * sx, 57 * TILE_SIZE * sy);
     megaCtx.fillText('PORT DOCKS', 29 * TILE_SIZE * sx, 67 * TILE_SIZE * sy);
 
-    // Payphones & Stunt Jumps
+    // Payphones, Stunt Jumps, Gas Stations & HV Power Substations
     megaCtx.fillStyle = '#39ff14';
     for (const ph of payphones) megaCtx.fillRect(ph.x * sx - 3, ph.y * sy - 3, 6, 6);
     megaCtx.fillStyle = '#00f0ff';
     for (const sj of stuntJumps) megaCtx.fillRect(sj.x * sx - 2.5, sj.y * sy - 2.5, 5, 5);
+    for (const gs of gasStations) {
+      megaCtx.fillStyle = gs.exploded ? '#52525b' : '#fb923c';
+      megaCtx.fillRect(gs.x * sx - 3, gs.y * sy - 3, 6, 6);
+    }
+    for (const pn of powerNodes) {
+      megaCtx.fillStyle = pn.destroyed ? '#ef4444' : '#38bdf8';
+      megaCtx.fillRect(pn.x * sx - 3, pn.y * sy - 3, 6, 6);
+    }
 
     if (customWaypoint) {
       megaCtx.fillStyle = '#ff2a85';
@@ -9139,6 +10533,10 @@
       wNameEl.textContent = 'HYDRA-70 ROCKETS';
       wAmmoEl.textContent = '∞';
       if (wLethEl) { wLethEl.textContent = 'TIER V // GUNSHIP DEMOLITION'; wLethEl.style.color = '#fb923c'; }
+    } else if (player.vehicle && player.vehicle.isFiretruck) {
+      wNameEl.textContent = 'DELUGE HYDRO-CANNON';
+      wAmmoEl.textContent = '∞';
+      if (wLethEl) { wLethEl.textContent = 'TIER IV // HIGH-PRESSURE HYDRO'; wLethEl.style.color = '#38bdf8'; }
     } else {
       wNameEl.textContent = w.name;
       wAmmoEl.textContent = player.ammo[w.id] === Infinity ? '∞' : player.ammo[w.id];
@@ -9198,16 +10596,19 @@
     if (!activeMission) {
       if (player.vehicle && player.vehicle.isHeli) {
         titleEl.textContent = `FLIGHT DECK // ${player.vehicle.name}`;
-        descEl.textContent = 'LAND HELI: Hold [SPACE] or press [L] Auto-Land -> press [F] to Park (rotors stop!) • ROCKETS: [L-CLICK / CTRL] • PARACHUTE: [F] in air!';
+        descEl.textContent = 'LAND HELI: Hold [SPACE] or press [L] Auto-Land -> press [F] to Park (rotors stop!) • [R-CLICK / U] MAG-TOW WRECKING BALL • ROCKETS: [L-CLICK / CTRL]!';
       } else if (player.vehicle && player.vehicle.isJet) {
         titleEl.textContent = `FLIGHT DECK // ${player.vehicle.name}`;
         descEl.textContent = 'FIRE MISSILES: [L-CLICK] or [CTRL / K] at Ground Target Reticle • CLIMB: [W] • PARACHUTE BAILOUT: [F] • CITY CRASH = 5★!';
       } else if (player.vehicle && player.vehicle.isTank) {
         titleEl.textContent = `ARMORED COMMAND // ${player.vehicle.name}`;
-        descEl.textContent = 'FIRE 120MM SHELL: [L-CLICK / CTRL] • Ram walls head-on to breach & collapse buildings!';
+        descEl.textContent = 'FIRE 120MM SHELL: [L-CLICK / CTRL] • [R-CLICK / U] MAG-TOW • Ram walls head-on to breach & collapse buildings!';
+      } else if (player.vehicle && player.vehicle.isFiretruck) {
+        titleEl.textContent = `FIRE ENGINE COMMAND // ${player.vehicle.name}`;
+        descEl.textContent = 'HYDRO-CANNON: [L-CLICK / CTRL] douses fires & blasts cars/peds! • [E] SIREN • [R-CLICK / U] MAG-TOW CABLE!';
       } else {
         titleEl.textContent = 'FREE ROAM // LEONIDA';
-        descEl.textContent = 'Press [V] for Orbital Vehicle Drop (747/Heli/Jet/Tank), [G] for Satellite Map, or answer ringing green payphones!';
+        descEl.textContent = 'Press [V] Vehicle Drop (747/Heli/Firetruck/Tank), [N] Live News TV, [P] Sky-Drone Cam, or [G] Satellite Map!';
       }
       timerEl.classList.add('hidden');
     } else {

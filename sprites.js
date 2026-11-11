@@ -578,6 +578,7 @@ window.SpriteForge = (() => {
     const isJet = typeKey === 'jet';
     const isAirliner = typeKey === 'airliner';
     const isTruck = typeKey === 'truck';
+    const isFiretruck = typeKey === 'firetruck';
     const isBike = typeKey === 'bike';
     const isSkate = typeKey === 'skate';
     const isTank = typeKey === 'tank';
@@ -586,13 +587,92 @@ window.SpriteForge = (() => {
     const isHeli = typeKey === 'heli' || typeKey === 'falcon';
     const isFalcon = typeKey === 'falcon';
 
-    const cw = isAirliner ? 468 : (isJet ? 224 : (isTruck ? 116 : (isBoat ? 108 : (isTank ? 96 : (isHeli ? 136 : 88)))));
-    const ch = isAirliner ? 440 : (isJet ? 192 : (isTruck ? 56 : (isBoat ? 48 : (isTank ? 58 : (isHeli ? 86 : 48)))));
+    const cw = isAirliner ? 468 : (isJet ? 224 : ((isTruck || isFiretruck) ? 116 : (isBoat ? 108 : (isTank ? 96 : (isHeli ? 136 : 88)))));
+    const ch = isAirliner ? 440 : (isJet ? 192 : ((isTruck || isFiretruck) ? 56 : (isBoat ? 48 : (isTank ? 58 : (isHeli ? 86 : 48)))));
     const c = createCanvas(cw, ch);
     const ctx = c.getContext('2d');
     ctx.translate(cw * 0.5, ch * 0.5);
 
     const baseCol = damaged ? '#27272a' : color;
+
+    // ----------------------------------------------------------
+    // SPECIAL SPRITE A-FD: LEONIDA FIRE & RESCUE ENGINE 07 (90x33)
+    // ----------------------------------------------------------
+    if (isFiretruck) {
+      const w = 90;
+      const h = 33;
+      // Soft truck drop shadow
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+      ctx.beginPath();
+      ctx.roundRect(-w * 0.5 - 2, -h * 0.5 - 2, w + 4, h + 4, 5);
+      ctx.fill();
+
+      // 6 Heavy-Duty Dual-Rear Fire Engine Tires
+      ctx.fillStyle = '#090a0d';
+      for (const wx of [-31, -15, 27]) {
+        ctx.fillRect(wx - 5.5, -h * 0.53, 11, 4.5);
+        ctx.fillRect(wx - 5.5, h * 0.53 - 4.5, 11, 4.5);
+      }
+
+      // Rear Apparatus Pump Body + Forward Crew Cab (Fire-Engine Crimson)
+      ctx.fillStyle = bodyGradFor(ctx, baseCol || '#dc2626', h * 0.5);
+      ctx.strokeStyle = '#0f172a';
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.roundRect(-w * 0.5, -h * 0.48, w, h * 0.96, 4);
+      ctx.fill();
+      ctx.stroke();
+
+      // Chrome Front Bumper + White Reflective Safety Cab Roof
+      ctx.fillStyle = '#e2e8f0';
+      ctx.fillRect(w * 0.5 - 3.5, -h * 0.46, 4, h * 0.92);
+      if (!damaged) {
+        ctx.fillStyle = '#f8fafc';
+        ctx.fillRect(14, -h * 0.42, 24, h * 0.84);
+      }
+
+      // Panoramic Crew Cab Windshield
+      ctx.fillStyle = '#0c4a6e';
+      ctx.fillRect(32, -h * 0.40, 8, h * 0.80);
+
+      // Brushed Aluminum Midship Pump Panel & High-Pressure Hose Reels
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillRect(-2, -h * 0.46, 14, h * 0.92);
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(1, -h * 0.36, 8, h * 0.72);
+
+      // Full-Length Aluminum Aerial Extension Ladder Rack along Port Side
+      ctx.strokeStyle = damaged ? '#52525b' : '#e2e8f0';
+      ctx.lineWidth = 1.8;
+      ctx.strokeRect(-40, 3.5, 50, 7.5);
+      ctx.lineWidth = 1.1;
+      for (let lx = -36; lx <= 6; lx += 6) {
+        ctx.beginPath();
+        ctx.moveTo(lx, 3.5);
+        ctx.lineTo(lx, 11.0);
+        ctx.stroke();
+      }
+
+      // Black Hard-Suction Hose Tube along Starboard Side
+      ctx.fillStyle = '#18181b';
+      ctx.fillRect(-40, -10.5, 48, 4.5);
+
+      // Dual Red/White LED Emergency Lightbar on Crew Cab
+      if (!damaged) {
+        ctx.fillStyle = '#ef4444';
+        ctx.fillRect(21, -h * 0.40, 5, 10);
+        ctx.fillRect(21, h * 0.40 - 10, 5, 10);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(21, -3.5, 5, 7);
+      }
+
+      // Rear Yellow/Red High-Vis Chevron Hazard Stripes
+      ctx.fillStyle = '#facc15';
+      ctx.fillRect(-w * 0.5, -h * 0.44, 3.5, h * 0.88);
+
+      carSprites[key] = c;
+      return c;
+    }
 
     // ----------------------------------------------------------
     // SPECIAL SPRITE A0: CARBON X-2027 CONCEPT HYPERCAR
@@ -1896,6 +1976,93 @@ window.SpriteForge = (() => {
     tctx.fill();
     tctx.stroke();
     propSprites.tankTurret = tc;
+
+    // Rotating Chrome Deluge Water Monitor Turret for Leonida Firetruck
+    const wc = createCanvas(52, 28);
+    const wctx = wc.getContext('2d');
+    wctx.translate(22, 14);
+    wctx.fillStyle = '#475569';
+    wctx.beginPath(); wctx.arc(0, 0, 6.5, 0, Math.PI * 2); wctx.fill();
+    wctx.fillStyle = '#e2e8f0';
+    wctx.fillRect(2, -2.6, 19, 5.2);
+    wctx.fillStyle = '#ef4444';
+    wctx.fillRect(18, -3.8, 5, 7.6);
+    propSprites.waterMonitor = wc;
+
+    // Everglades Armored Alligator Sprite (68x28)
+    const gc = createCanvas(68, 28);
+    const gctx = gc.getContext('2d');
+    gctx.translate(34, 14);
+    // Ridged sinusoidal tail + scuted torso + broad snapping snout
+    gctx.fillStyle = '#2d4a2b';
+    gctx.strokeStyle = '#142615';
+    gctx.lineWidth = 1.3;
+    gctx.beginPath();
+    gctx.moveTo(28, 0);
+    gctx.quadraticCurveTo(22, -6.5, 8, -7.2);
+    gctx.lineTo(-10, -5.8);
+    gctx.quadraticCurveTo(-24, -2.5, -31, 0);
+    gctx.quadraticCurveTo(-24, 2.5, -10, 5.8);
+    gctx.lineTo(8, 7.2);
+    gctx.quadraticCurveTo(22, 6.5, 28, 0);
+    gctx.closePath();
+    gctx.fill();
+    gctx.stroke();
+    // Splayed webbed gator limbs
+    gctx.fillStyle = '#253d23';
+    for (const [lx, ly] of [[8, -8.5], [8, 8.5], [-8, -7.5], [-8, 7.5]]) {
+      gctx.beginPath(); gctx.ellipse(lx, ly, 4.5, 2.2, ly > 0 ? 0.45 : -0.45, 0, Math.PI * 2); gctx.fill();
+    }
+    // Dorsal osteoderm scute ridges & glowing amber eyes
+    gctx.fillStyle = '#4d7c46';
+    for (let sx = -18; sx <= 14; sx += 5.5) {
+      gctx.fillRect(sx, -2.2, 3.2, 4.4);
+    }
+    gctx.fillStyle = '#facc15';
+    gctx.beginPath();
+    gctx.arc(16, -3.2, 1.5, 0, Math.PI * 2);
+    gctx.arc(16, 3.2, 1.5, 0, Math.PI * 2);
+    gctx.fill();
+    propSprites.gator = gc;
+
+    // Atlantic Great White Shark Silhouette + Slicing Dorsal Fin Sprite (76x34)
+    const sc = createCanvas(76, 34);
+    const sctx = sc.getContext('2d');
+    sctx.translate(38, 17);
+    // Submerged torpedo body + pectoral fins + crescent caudal fin
+    sctx.fillStyle = 'rgba(30, 41, 59, 0.76)';
+    sctx.beginPath();
+    sctx.moveTo(31, 0);
+    sctx.quadraticCurveTo(16, -8, -4, -6.5);
+    sctx.lineTo(-26, -2);
+    sctx.lineTo(-34, -9);
+    sctx.lineTo(-30, 0);
+    sctx.lineTo(-34, 9);
+    sctx.lineTo(-26, 2);
+    sctx.lineTo(-4, 6.5);
+    sctx.quadraticCurveTo(16, 8, 31, 0);
+    sctx.closePath();
+    sctx.fill();
+    // Swept pectoral fins
+    sctx.beginPath();
+    sctx.moveTo(8, -5); sctx.lineTo(-4, -15); sctx.lineTo(-6, -5);
+    sctx.moveTo(8, 5);  sctx.lineTo(-4, 15);  sctx.lineTo(-6, 5);
+    sctx.fill();
+    // Surface-breaking slate-gray dorsal fin + white water wake
+    sctx.strokeStyle = 'rgba(224, 242, 254, 0.78)';
+    sctx.lineWidth = 1.5;
+    sctx.beginPath();
+    sctx.moveTo(4, 0); sctx.lineTo(-10, -5.5);
+    sctx.moveTo(4, 0); sctx.lineTo(-10, 5.5);
+    sctx.stroke();
+    sctx.fillStyle = '#0f172a';
+    sctx.beginPath();
+    sctx.moveTo(6, 0);
+    sctx.lineTo(-8, -3.2);
+    sctx.lineTo(-6, 2.2);
+    sctx.closePath();
+    sctx.fill();
+    propSprites.shark = sc;
   }
 
   function init() {

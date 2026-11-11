@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#070a14" />
-  <meta name="description" content="GTA VI: Leonida Carbon (2027 Hyper-Edition) — Zero-dependency HTML5 Canvas + Web Audio 2.5D open-world sandbox across an 80×80 State of Leonida with 16 vehicles, colossal 747-8 airliner, destructible buildings, interactive weather, and 10 multi-track MIDI soundtracks." />
+  <meta name="description" content="GTA VI: Leonida Carbon (2027 Hyper-Edition) — Zero-dependency HTML5 Canvas + Web Audio 2.5D open-world sandbox across an 80×80 State of Leonida with 17 vehicles, colossal 747-8 airliner, Fire Engine hydro-cannon, Helicopter Mag-Tow wrecking ball, district blackouts, live WLTV News PiP, and 10 multi-track MIDI soundtracks." />
   <meta property="og:title" content="GTA VI: LEONIDA CARBON // 2027 EDITION" />
-  <meta property="og:description" content="Play directly in your browser: 12,800×12,800 State of Leonida, 7 districts, 16 land/sea/air vehicles, permanent battlefield destruction, and 10 original MIDI radio & pursuit tracks." />
+  <meta property="og:description" content="Play directly in your browser: 12,800×12,800 State of Leonida, 7 districts, 17 land/sea/air vehicles, permanent battlefield destruction, live News Chopper TV, and 10 original MIDI radio & pursuit tracks." />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://abdelouahabb.github.io/gta2/" />
   <meta name="twitter:card" content="summary_large_image" />
@@ -63,8 +63,23 @@
     <div id="mission-box" class="mission-panel">
       <div class="mission-header">PAYPHONE DISPATCH</div>
       <div id="mission-title" class="mission-title">FREE ROAM // LEONIDA</div>
-      <div id="mission-desc" class="mission-desc">Press [V] for Orbital Vehicle Drop, [G] for Satellite Map &amp; Fast-Travel, or answer ringing green payphones!</div>
+      <div id="mission-desc" class="mission-desc">Press [V] Vehicle Drop (747/Heli/Firetruck/Tank), [N] Live News TV, [P] Sky-Drone Cam, or [G] Satellite Map!</div>
       <div id="mission-timer" class="mission-timer hidden">00:00</div>
+    </div>
+
+    <!-- Live WLTV Action News 6 Chopper Picture-in-Picture TV Broadcast [N / 3★+] -->
+    <div id="news-pip" class="news-pip hidden">
+      <div id="news-pip-header" class="news-pip-header" title="Click or press [N] to toggle WLTV Sky-Cam 6">
+        <span class="news-live-pill">● LIVE // WLTV SKY-CAM 6</span>
+        <span class="news-toggle-hint">[N]</span>
+      </div>
+      <canvas id="newsCamCanvas" width="264" height="142"></canvas>
+      <div class="news-chyron">
+        <span class="chyron-tag">BREAKING</span>
+        <div class="chyron-scroll-wrap">
+          <span id="news-ticker-text" class="chyron-text">WLTV ACTION NEWS 6 AIRBORNE OVER LEONIDA METROPOLIS</span>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -141,9 +156,18 @@
     <div class="quick-actions">
       <button id="btn-droppod" class="hud-btn" type="button">[V] DROP-POD</button>
       <button id="btn-megamap" class="hud-btn" type="button">[G] SAT-MAP</button>
+      <button id="btn-newscam" class="hud-btn" type="button">[N] NEWS TV</button>
+      <button id="btn-drone" class="hud-btn" type="button">[P] DRONE</button>
       <button id="btn-weather" class="hud-btn" type="button">[B] WEATHER</button>
       <button id="btn-time" class="hud-btn" type="button">[T] TIME</button>
     </div>
+  </div>
+
+  <!-- Sky-Drone Photo & Battlefield Survey Bar [P] -->
+  <div id="drone-hud" class="drone-hud hidden">
+    <span class="drone-badge">🛸 CARBON SKY-DRONE ACTIVE</span>
+    <span class="drone-help">[WASD] Pan • [WHEEL] Zoom (0.24×–1.45×) • [O] Snap PNG • [P] Exit</span>
+    <button id="btn-snap-png" class="drone-snap-btn" type="button">📸 SNAP POSTCARD</button>
   </div>
 
   <!-- Bottom-Center: Digital Speedometer, Nitrous Bar & Chassis Integrity -->
@@ -180,9 +204,10 @@
       <div><span>SPACE (Hold) or [L]</span> Land Heli / Car Brake</div>
       <div><span>F / ENTER</span> Enter / Park Heli / Parachute</div>
       <div><span>L-CLICK / CTRL / K</span> Aircraft Missiles / Fire</div>
+      <div><span>R-CLICK / U</span> Heli &amp; Rig Mag-Tow Wrecking Ball</div>
       <div><span>1-7 / C / Wheel</span> Lethal Weapons (Destroys!)</div>
-      <div><span>E / X</span> Horn &amp; Siren / Bullet-Time</div>
-      <div><span>V / G</span> Drop-Pod (747/Heli/Jet) / Map</div>
+      <div><span>N / P / O</span> Live News TV / Sky-Drone / Snap</div>
+      <div><span>E / X / V / G</span> Horn / Reflex / Drop-Pod / Map</div>
       <div><span>R / M / B / T</span> 10 Radios / Weather / Time</div>
     </div>
   </div>
@@ -202,7 +227,11 @@
         </button>
         <button class="pod-card" data-veh="falcon" type="button">
           <div class="pod-title">FALCON GUNSHIP HELI</div>
-          <div class="pod-tag">LAND [SPACE/L] • ROCKETS [CLICK/CTRL] • PARK [F]</div>
+          <div class="pod-tag">LAND [SPACE/L] • TOW WRECKING BALL [R-CLICK/U]</div>
+        </button>
+        <button class="pod-card" data-veh="firetruck" type="button">
+          <div class="pod-title">LEONIDA FD ENGINE 07</div>
+          <div class="pod-tag">PRESSURIZED WATER CANNON • BLASTS CARS &amp; FIRES</div>
         </button>
         <button class="pod-card" data-veh="jet" type="button">
           <div class="pod-title">HYDRA VTOL JET</div>
@@ -226,7 +255,7 @@
         </button>
         <button class="pod-card" data-veh="truck" type="button">
           <div class="pod-title">HAULER 18-WHEELER</div>
-          <div class="pod-tag">HEAVY HIGHWAY FREIGHT RIG</div>
+          <div class="pod-tag">HEAVY FREIGHT RIG • MAG-TOW CABLE [R-CLICK/U]</div>
         </button>
         <button class="pod-card" data-veh="stinger" type="button">
           <div class="pod-title">INFERNUS TURBO</div>
@@ -263,6 +292,8 @@
           <div class="legend-key"><span class="dot dot-white"></span> You</div>
           <div class="legend-key"><span class="dot dot-green"></span> Payphone / Pay N' Spray</div>
           <div class="legend-key"><span class="dot dot-cyan"></span> Stunt Ramp / Sky-Rail</div>
+          <div class="legend-key"><span class="dot dot-orange"></span> RON-99 Gas Station (Explosive)</div>
+          <div class="legend-key"><span class="dot dot-sky"></span> HV Power Grid Substation</div>
           <div class="legend-key"><span class="dot dot-pink"></span> Custom GPS Waypoint</div>
         </div>
       </div>
